@@ -91,8 +91,6 @@ class File:
             raise IOError('Trying to read item from a closed file.')
         if self._mode != 'r':
             raise IOError(f'File is expected to be opened in read mode, got {self._mode}.')
-
-        item = str(item)
         if item not in self._metadata:
             raise KeyError(f'Item {item} could not be found.')
 
@@ -106,7 +104,7 @@ class File:
 
         return data
 
-    def get_array(self, item: int, key: str) -> ndarray:
+    def get_array(self, item: str, key: str) -> ndarray:
         """
         Get an array from the dataset.
         :param item: index of the item in the dataset
@@ -117,8 +115,6 @@ class File:
             raise IOError('Trying to read array from a closed file.')
         if self._mode != 'r':
             raise IOError(f'File is expected to be opened in read mode, got {self._mode}.')
-
-        item = str(item)
         if item not in self._metadata:
             raise KeyError(f'Item {item} could not be found.')
         if key not in self._metadata[item]:
@@ -161,52 +157,56 @@ class File:
         self._fp.write(np.array([self._metadata_length], dtype=np.int64).tobytes())
         self._fp.write(config.MAGIC_BYTES)
 
-    def write_item(self, item: int, data: Dict[str, ndarray]):
+    def write_item(self, item: str, data: Dict[str, ndarray]):
         """
-        Writes an item with the given item index to the dataset.
+        Write an item with the given item index to the dataset.
         :param item: index of the item
         :param data: dictionary of arrays
+        :return:
+        """
+        if item in self._metadata:
+            raise KeyError(f'Item {item} already in dataset.')
+
+        for key, array in data.items():
+            self.write_array(item, key, array)
+
+    def write_array(self, item: str, key: str, array: ndarray):
+        """
+        Write an array with the given item index and key to the dataset.
+        :param item: index of the item
+        :param key: key of the array
+        :param array: array to write
         :return:
         """
         if self._fp.closed:
             raise IOError('Trying to write an item to a closed file.')
         if self._mode != 'w':
             raise IOError(f'File is expected to be opened in write mode, got {self._mode}.')
+        if type(item) is not str:
+            raise ValueError(f'Expected key type to be str, got {type(item)}.')
+        if type(key) is not str:
+            raise ValueError(f'Expected key type to be str, got {type(key)}.')
+        if type(array) is not ndarray:
+            raise ValueError(f'Expected value type to be ndarray, got {type(array)}.')
 
-        item = str(item)
-        if item in self._metadata:
-            raise KeyError(f'Item {item} already in dataset.')
+        if item not in self._metadata:
+            self._metadata[item] = dict()
 
-        for key, array in data.items():
-            if type(key) is not str:
-                raise ValueError(f'Expected key type to be str, got {type(key)}.')
-            if type(array) is not ndarray:
-                raise ValueError(f'Expected value type to be ndarray, got {type(array)}.')
+        if key in self._metadata[item]:
+            raise KeyError(f'Key {key} already in item {item}.')
 
-        self._metadata[item] = dict()
-        for key, array in data.items():
-            array_serialized = array.tobytes()
+        array_serialized = array.tobytes()
 
-            self._fp.seek(self._item_offset)
-            self._fp.write(array_serialized)
+        self._fp.seek(self._item_offset)
+        self._fp.write(array_serialized)
 
-            array_metadata = dict()
-            array_metadata['dtype'] = str(array.dtype)
-            array_metadata['offset'] = self._item_offset
-            array_metadata['size'] = len(array_serialized)
+        array_metadata = dict()
+        array_metadata['dtype'] = str(array.dtype)
+        array_metadata['offset'] = self._item_offset
+        array_metadata['size'] = len(array_serialized)
 
-            self._metadata[item][key] = array_metadata
-            self._item_offset += len(array_serialized)
-
-    def write_array(self, item: int, key: str, value: ndarray):
-        """
-        Write an array with the given item index and key to the dataset.
-        :param item: index of the item
-        :param key: key of the array
-        :param value: array
-        :return:
-        """
-        raise NotImplementedError()
+        self._metadata[item][key] = array_metadata
+        self._item_offset += len(array_serialized)
 
     @staticmethod
     def _version_to_string(version_bytes: bytes) -> str:
