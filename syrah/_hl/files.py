@@ -5,7 +5,7 @@
 from typing import Any, Dict
 import numpy as np
 from numpy import ndarray
-import pickle
+import bson
 
 from .. import version
 from .. import config
@@ -47,7 +47,7 @@ class File:
             self._read_headers()
 
             self._fp.seek(self._metadata_offset)
-            self._metadata = pickle.loads(self._fp.read(self._metadata_length))
+            self._metadata = bson.loads(self._fp.read(self._metadata_length))
         else:
             raise ValueError(f'Expected File opening mode to be "r" or "w", got {self._mode}.')
 
@@ -91,6 +91,8 @@ class File:
             raise IOError('Trying to read item from a closed file.')
         if self._mode != 'r':
             raise IOError(f'File is expected to be opened in read mode, got {self._mode}.')
+
+        item = str(item)
         if item not in self._metadata:
             raise KeyError(f'Item {item} could not be found.')
 
@@ -100,7 +102,7 @@ class File:
         for key, array_metadata in item_metadata.items():
             self._fp.seek(array_metadata['offset'])
             array_serialized = self._fp.read(array_metadata['size'])
-            data[key] = np.frombuffer(array_serialized, dtype=array_metadata['dtype'])
+            data[key] = np.frombuffer(array_serialized, dtype=type(array_metadata['dtype']))
 
         return data
 
@@ -115,6 +117,8 @@ class File:
             raise IOError('Trying to read array from a closed file.')
         if self._mode != 'r':
             raise IOError(f'File is expected to be opened in read mode, got {self._mode}.')
+
+        item = str(item)
         if item not in self._metadata:
             raise KeyError(f'Item {item} could not be found.')
         if key not in self._metadata[item]:
@@ -169,6 +173,7 @@ class File:
         if self._mode != 'w':
             raise IOError(f'File is expected to be opened in write mode, got {self._mode}.')
 
+        item = str(item)
         if item in self._metadata:
             raise KeyError(f'Item {item} already in dataset.')
 
@@ -186,7 +191,7 @@ class File:
             self._fp.write(array_serialized)
 
             array_metadata = dict()
-            array_metadata['dtype'] = array.dtype
+            array_metadata['dtype'] = str(array.dtype)
             array_metadata['offset'] = self._item_offset
             array_metadata['size'] = len(array_serialized)
 
@@ -231,7 +236,7 @@ class File:
         if self._mode != 'w':
             raise IOError(f'File is expected to be opened in write mode, got {self._mode}.')
 
-        metadata_serialized = pickle.dumps(self._metadata)
+        metadata_serialized = bson.dumps(self._metadata)
 
         self._metadata_offset = self._item_offset
         self._metadata_length = len(metadata_serialized)
