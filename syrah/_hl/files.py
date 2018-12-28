@@ -134,7 +134,7 @@ class File:
         if self._fp.closed:
             raise IOError('Trying to read headers from a closed file.')
         if self._mode != 'r':
-            return IOError(f'File is expected to be opened in read mode, got {self._mode}.')
+            raise IOError(f'File is expected to be opened in read mode, got {self._mode}.')
 
         self._fp.seek(0)
         self._version = self._version_to_string(self._fp.read(config.NUM_BYTES_VERSION))
@@ -149,7 +149,7 @@ class File:
         if self._fp.closed:
             raise IOError('Trying to write headers to a closed file.')
         if self._mode != 'w':
-            return IOError(f'File is expected to be opened in write mode, got {self._mode}.')
+            raise IOError(f'File is expected to be opened in write mode, got {self._mode}.')
 
         self._fp.seek(0)
         self._fp.write(self._version_to_bytes(self._version))
@@ -167,7 +167,7 @@ class File:
         if self._fp.closed:
             raise IOError('Trying to write an item to a closed file.')
         if self._mode != 'w':
-            return IOError(f'File is expected to be opened in write mode, got {self._mode}.')
+            raise IOError(f'File is expected to be opened in write mode, got {self._mode}.')
 
         if item in self._metadata:
             raise KeyError(f'Item {item} already in dataset.')
@@ -229,7 +229,7 @@ class File:
         if self._fp.closed:
             raise IOError('Trying to flush to a closed file.')
         if self._mode != 'w':
-            return IOError(f'File is expected to be opened in write mode, got {self._mode}.')
+            raise IOError(f'File is expected to be opened in write mode, got {self._mode}.')
 
         metadata_serialized = pickle.dumps(self._metadata)
 
