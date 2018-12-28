@@ -13,7 +13,6 @@ from .. import config
 
 class File:
     # TODO: add "append" mode.
-    # TODO: check json serialization for metadata encoding (better compatibility with Scala/Java).
     # TODO: check that metadata offset + length == file size (both "r" and "w" modes)
     """
         Represent a Syrah dataset file.
