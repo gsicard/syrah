@@ -1,7 +1,7 @@
 """
     Implements high-level support for file objects.
 """
-from typing import Any, Dict, Optional, Type
+from typing import Any, Dict, Optional, Type, AnyStr
 from types import TracebackType
 import numpy as np
 from numpy import ndarray
@@ -57,12 +57,12 @@ class File:
         """
         return self
 
-    def __exit__(self, type: Optional[Type[BaseException]], value: Optional[BaseException],
+    def __exit__(self, exception_type: Optional[Type[BaseException]], exception_value: Optional[BaseException],
                  traceback: Optional[TracebackType]):
         """
         Explicitly close the File when exiting a "with" context and handle exceptions.
-        :param type: type of exception
-        :param value: value of exception
+        :param exception_type: type of exception
+        :param exception_value: value of exception
         :param traceback: traceback
         :return:
         """
@@ -99,8 +99,8 @@ class File:
 
         for key, array_metadata in item_metadata.items():
             self._fp.seek(array_metadata['offset'])
-            array_serialized = self._fp.read(array_metadata['size'])
-            data[key] = np.frombuffer(array_serialized, dtype=type(array_metadata['dtype']))
+            array_serialized: AnyStr = self._fp.read(array_metadata['size'])
+            data[key]: ndarray = np.frombuffer(array_serialized, dtype=type(array_metadata['dtype']))
 
         return data
 
@@ -137,13 +137,17 @@ class File:
             raise IOError(f'File is expected to be opened in read mode, got {self._mode}.')
 
         self._fp.seek(0)
-        self._version = self._version_to_string(self._fp.read(config.NUM_BYTES_VERSION))
-        self._metadata_offset = np.frombuffer(self._fp.read(config.NUM_BYTES_METADATA_OFFSET), dtype=np.int64)[0]
-        self._metadata_length = np.frombuffer(self._fp.read(config.NUM_BYTES_METADATA_LENGTH), dtype=np.int64)[0]
-        magic_bytes = self._fp.read(config.NUM_BYTES_MAGIC_BYTES)
+        header_version: AnyStr = self._fp.read(config.NUM_BYTES_VERSION)
+        header_metadata_offset: AnyStr = self._fp.read(config.NUM_BYTES_METADATA_OFFSET)
+        header_metadata_length: AnyStr = self._fp.read(config.NUM_BYTES_METADATA_LENGTH)
+        header_magic_bytes = self._fp.read(config.NUM_BYTES_MAGIC_BYTES)
 
-        if magic_bytes != config.MAGIC_BYTES:
-            raise ValueError(f'Expected magic bytes to be "GS", got "{magic_bytes}.')
+        if header_magic_bytes != config.MAGIC_BYTES:
+            raise ValueError(f'Expected magic bytes to be "{config.MAGIC_BYTES}", got "{header_magic_bytes}.')
+
+        self._version = self._version_to_string(header_version)
+        self._metadata_offset = np.frombuffer(header_metadata_offset, dtype=np.int64)[0]
+        self._metadata_length = np.frombuffer(header_metadata_length, dtype=np.int64)[0]
 
     def _write_headers(self):
         if self._fp.closed:
@@ -151,10 +155,14 @@ class File:
         if self._mode != 'w':
             raise IOError(f'File is expected to be opened in write mode, got {self._mode}.')
 
+        header_version: AnyStr = self._version_to_bytes(self._version)
+        header_metadata_offset: AnyStr = np.array([self._metadata_offset], dtype=np.int64).tobytes()
+        header_metadata_length: AnyStr = np.array([self._metadata_length], dtype=np.int64).tobytes()
+
         self._fp.seek(0)
-        self._fp.write(self._version_to_bytes(self._version))
-        self._fp.write(np.array([self._metadata_offset], dtype=np.int64).tobytes())
-        self._fp.write(np.array([self._metadata_length], dtype=np.int64).tobytes())
+        self._fp.write(header_version)
+        self._fp.write(header_metadata_offset)
+        self._fp.write(header_metadata_length)
         self._fp.write(config.MAGIC_BYTES)
 
     def write_item(self, item: str, data: Dict[str, ndarray]):
@@ -195,7 +203,7 @@ class File:
         if key in self._metadata[item]:
             raise KeyError(f'Key {key} already in item {item}.')
 
-        array_serialized = array.tobytes()
+        array_serialized: AnyStr = array.tobytes()
 
         self._fp.seek(self._item_offset)
         self._fp.write(array_serialized)
@@ -236,7 +244,7 @@ class File:
         if self._mode != 'w':
             raise IOError(f'File is expected to be opened in write mode, got {self._mode}.')
 
-        metadata_serialized = bson.dumps(self._metadata)
+        metadata_serialized: AnyStr = bson.dumps(self._metadata)
 
         self._metadata_offset = self._item_offset
         self._metadata_length = len(metadata_serialized)
