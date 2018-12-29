@@ -9,5 +9,7 @@
     <FORMAT VERSION><METADATA OFFSET><METADATA LENGTH><MAGIC BYTES><BYTE ARRAYS><SERIALIZED METADATA>
 """
 
+# TODO: add import error checking
+# TODO: add setup.py
 from ._hl.files import File
 from .version import version as __version__
