@@ -11,5 +11,6 @@
 
 # TODO: add import error checking
 # TODO: add setup.py
+# TODO: add S3 compatibility (benchmark boto, smart-open...)
 from ._hl.files import File
 from .version import version as __version__

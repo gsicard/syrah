@@ -1,8 +1,8 @@
 """
     Implements high-level support for file objects.
 """
-
-from typing import Any, Dict
+from typing import Any, Dict, Optional, Type
+from types import TracebackType
 import numpy as np
 from numpy import ndarray
 import bson
@@ -41,7 +41,7 @@ class File:
 
             self._metadata: Dict[int, Dict[str, Dict[str, Any]]] = dict()
             self._item_offset = config.NUM_BYTES_VERSION + config.NUM_BYTES_METADATA_LENGTH + \
-                                config.NUM_BYTES_METADATA_LENGTH + config.NUM_BYTES_MAGIC_BYTES
+                config.NUM_BYTES_METADATA_LENGTH + config.NUM_BYTES_MAGIC_BYTES
         elif self._mode == 'r':
             self._read_headers()
 
@@ -57,12 +57,13 @@ class File:
         """
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, type: Optional[Type[BaseException]], value: Optional[BaseException],
+                 traceback: Optional[TracebackType]):
         """
-        Explicitly close the File when exiting a "with" context.
-        :param type:
-        :param value:
-        :param traceback:
+        Explicitly close the File when exiting a "with" context and handle exceptions.
+        :param type: type of exception
+        :param value: value of exception
+        :param traceback: traceback
         :return:
         """
         self.close()
