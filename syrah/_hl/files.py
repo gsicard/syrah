@@ -100,7 +100,7 @@ class File:
         for key, array_metadata in item_metadata.items():
             self._fp.seek(array_metadata['offset'])
             array_serialized: AnyStr = self._fp.read(array_metadata['size'])
-            data[key]: ndarray = np.frombuffer(array_serialized, dtype=type(array_metadata['dtype']))
+            data[key]: ndarray = np.frombuffer(array_serialized, dtype=array_metadata['dtype'])
 
         return data
 
