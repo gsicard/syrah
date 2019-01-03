@@ -17,16 +17,39 @@ class File:
     """
         Represent a Syrah dataset file.
     """
-    def __init__(self, file_path: str, mode: str):
+    def __init__(self, file_path: Optional[str] = None, mode: Optional[str] = None):
         """
         Create a new file object.
         :param file_path: path to the file on disk
         :param mode: opening mode (currently, only "r" or "w" supported)
         """
-        self._mode = mode
-        self._fp = open(file_path, self._mode + 'b')
+        if (file_path is None) != (mode is None):
+            raise ValueError(f'file_path and mode need to be both instantiated.')
 
-        self._init_data()
+        self.file_path = None
+        self._mode = None
+        self._fp = None
+        self._version = None
+        self._metadata_offset = None
+        self._metadata_length = None
+        self._metadata = None
+        self._item_offset = None
+
+        if file_path is not None:
+            self.open(file_path, mode)
+            self._init_data()
+
+    def open(self, file_path: str, mode: str):
+        self.file_path = file_path
+        self._mode = mode
+
+        if self._fp is not None:
+            self.close()
+
+        self._fp = open(self.file_path, self._mode + 'b')
+
+
+        return self
 
     def _init_data(self):
         """
@@ -74,6 +97,8 @@ class File:
         Needs to be called explicitly or use a "with" statement.
         :return:
         """
+        if self._fp is None:
+            return
         if self._fp.closed:
             return
         if self._mode == 'w':
@@ -87,6 +112,8 @@ class File:
         :param item: index of the item in the dataset
         :return: a dictionary of arrays
         """
+        if self._fp is None:
+            raise IOError('Trying to read an item from a non initialized file.')
         if self._fp.closed:
             raise IOError('Trying to read item from a closed file.')
         if self._mode != 'r':
@@ -111,6 +138,8 @@ class File:
         :param key: key of the array to retrieve
         :return: an array
         """
+        if self._fp is None:
+            raise IOError('Trying to read an array from a non initialized file.')
         if self._fp.closed:
             raise IOError('Trying to read array from a closed file.')
         if self._mode != 'r':
@@ -186,6 +215,8 @@ class File:
         :param array: array to write
         :return:
         """
+        if self._fp is None:
+            raise IOError('Trying to write an item to a non initialized file.')
         if self._fp.closed:
             raise IOError('Trying to write an item to a closed file.')
         if self._mode != 'w':
