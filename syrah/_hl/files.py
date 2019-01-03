@@ -17,17 +17,14 @@ class File:
     """
         Represent a Syrah dataset file.
     """
-    def __init__(self, file_path: Optional[str] = None, mode: Optional[str] = None):
+    def __init__(self, file_path: str, mode: str):
         """
         Create a new file object.
         :param file_path: path to the file on disk
         :param mode: opening mode (currently, only "r" or "w" supported)
         """
-        if (file_path is None) != (mode is None):
-            raise ValueError(f'file_path and mode need to be both instantiated.')
-
-        self.file_path = None
-        self._mode = None
+        self._file_path = file_path
+        self._mode = mode
         self._fp = None
         self._version = None
         self._metadata_offset = None
@@ -35,21 +32,24 @@ class File:
         self._metadata = None
         self._item_offset = None
 
-        if file_path is not None:
-            self.open(file_path, mode)
-            self._init_data()
+        self.open(file_path, mode)
+        self._init_data()
 
     def open(self, file_path: str, mode: str):
-        self.file_path = file_path
+        """
+        Open the dataset file.
+        This method needs to be called by each worker in case of multiprocessing to avoid concurrency issues.
+        :param file_path: path to the file on disk
+        :param mode: opening mode (currently, only "r" or "w" supported)
+        :return:
+        """
+        self._file_path = file_path
         self._mode = mode
 
         if self._fp is not None:
             self.close()
 
-        self._fp = open(self.file_path, self._mode + 'b')
-
-
-        return self
+        self._fp = open(self._file_path, self._mode + 'b')
 
     def _init_data(self):
         """
@@ -157,9 +157,17 @@ class File:
         return np.frombuffer(array_serialized, dtype=array_metadata['dtype'])
 
     def num_items(self) -> int:
+        """
+        Get the number of items in the dataset.
+        :return: number of items
+        """
         return len(self._metadata)
 
     def _read_headers(self):
+        """
+        Read the headers and the metadata from file.
+        :return:
+        """
         if self._fp.closed:
             raise IOError('Trying to read headers from a closed file.')
         if self._mode != 'r':
@@ -179,6 +187,10 @@ class File:
         self._metadata_length = np.frombuffer(header_metadata_length, dtype=np.int64)[0]
 
     def _write_headers(self):
+        """
+        Write headers to file.
+        :return:
+        """
         if self._fp.closed:
             raise IOError('Trying to write headers to a closed file.')
         if self._mode != 'w':

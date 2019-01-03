@@ -24,6 +24,10 @@ class SyrahDataset(Dataset):
         self.len = self.syr.num_items()
 
     def open(self, worker_id: int = -1):
+        """
+        Open the dataset file.
+        Needs to be set as "worker_init_fn" argument when using a Dataloader with num_workers > 1.
+        """
         self.syr.open(self.file_path, 'r')
         self.len = self.syr.num_items()
 
@@ -44,9 +48,20 @@ class SyrahDataset(Dataset):
 
 
 class SyrahConcatDataset(ConcatDataset):
-    def __init__(self, datasets):
+    """
+    Represent a concatenation of syrah datasets.
+    """
+    def __init__(self, datasets: List[SyrahDataset]):
+        """
+        Concatenate several syrah datasets
+        :param datasets: list of syrah datasets
+        """
         super().__init__(datasets)
 
     def open(self, worker_id: int = -1):
+        """
+        Open each of the dataset file.
+        Needs to be set as "worker_init_fn" argument when using a Dataloader with num_workers > 1.
+        """
         for dataset in self.datasets:
-            dataset.open()
+            dataset.open(worker_id)
