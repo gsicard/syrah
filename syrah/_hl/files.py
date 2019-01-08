@@ -23,10 +23,33 @@ class File:
         :param file_path: path to the file on disk
         :param mode: opening mode (currently, only "r" or "w" supported)
         """
+        self._file_path = file_path
         self._mode = mode
-        self._fp = open(file_path, self._mode + 'b')
+        self._fp = None
+        self._version = None
+        self._metadata_offset = None
+        self._metadata_length = None
+        self._metadata = None
+        self._item_offset = None
 
+        self.open(file_path, mode)
         self._init_data()
+
+    def open(self, file_path: str, mode: str):
+        """
+        Open the dataset file.
+        This method needs to be called by each worker in case of multiprocessing to avoid concurrency issues.
+        :param file_path: path to the file on disk
+        :param mode: opening mode (currently, only "r" or "w" supported)
+        :return:
+        """
+        self._file_path = file_path
+        self._mode = mode
+
+        if self._fp is not None:
+            self.close()
+
+        self._fp = open(self._file_path, self._mode + 'b')
 
     def _init_data(self):
         """
@@ -74,6 +97,8 @@ class File:
         Needs to be called explicitly or use a "with" statement.
         :return:
         """
+        if self._fp is None:
+            return
         if self._fp.closed:
             return
         if self._mode == 'w':
@@ -87,6 +112,8 @@ class File:
         :param item: index of the item in the dataset
         :return: a dictionary of arrays
         """
+        if self._fp is None:
+            raise IOError('Trying to read an item from a non initialized file.')
         if self._fp.closed:
             raise IOError('Trying to read item from a closed file.')
         if self._mode != 'r':
@@ -111,6 +138,8 @@ class File:
         :param key: key of the array to retrieve
         :return: an array
         """
+        if self._fp is None:
+            raise IOError('Trying to read an array from a non initialized file.')
         if self._fp.closed:
             raise IOError('Trying to read array from a closed file.')
         if self._mode != 'r':
@@ -128,9 +157,17 @@ class File:
         return np.frombuffer(array_serialized, dtype=array_metadata['dtype'])
 
     def num_items(self) -> int:
+        """
+        Get the number of items in the dataset.
+        :return: number of items
+        """
         return len(self._metadata)
 
     def _read_headers(self):
+        """
+        Read the headers and the metadata from file.
+        :return:
+        """
         if self._fp.closed:
             raise IOError('Trying to read headers from a closed file.')
         if self._mode != 'r':
@@ -150,6 +187,10 @@ class File:
         self._metadata_length = np.frombuffer(header_metadata_length, dtype=np.int64)[0]
 
     def _write_headers(self):
+        """
+        Write headers to file.
+        :return:
+        """
         if self._fp.closed:
             raise IOError('Trying to write headers to a closed file.')
         if self._mode != 'w':
@@ -186,6 +227,8 @@ class File:
         :param array: array to write
         :return:
         """
+        if self._fp is None:
+            raise IOError('Trying to write an item to a non initialized file.')
         if self._fp.closed:
             raise IOError('Trying to write an item to a closed file.')
         if self._mode != 'w':
