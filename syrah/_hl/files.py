@@ -174,13 +174,14 @@ class File:
             raise IOError(f'File is expected to be opened in read mode, got {self._mode}.')
 
         self._fp.seek(0)
-        header_version: AnyStr = self._fp.read(config.NUM_BYTES_VERSION)
-        header_metadata_offset: AnyStr = self._fp.read(config.NUM_BYTES_METADATA_OFFSET)
-        header_metadata_length: AnyStr = self._fp.read(config.NUM_BYTES_METADATA_LENGTH)
         header_magic_bytes = self._fp.read(config.NUM_BYTES_MAGIC_BYTES)
 
         if header_magic_bytes != config.MAGIC_BYTES:
             raise ValueError(f'Expected magic bytes to be "{config.MAGIC_BYTES}", got "{header_magic_bytes}.')
+
+        header_version: AnyStr = self._fp.read(config.NUM_BYTES_VERSION)
+        header_metadata_offset: AnyStr = self._fp.read(config.NUM_BYTES_METADATA_OFFSET)
+        header_metadata_length: AnyStr = self._fp.read(config.NUM_BYTES_METADATA_LENGTH)
 
         self._version = self._version_to_string(header_version)
         self._metadata_offset = np.frombuffer(header_metadata_offset, dtype=np.int64)[0]
@@ -201,10 +202,10 @@ class File:
         header_metadata_length: AnyStr = np.array([self._metadata_length], dtype=np.int64).tobytes()
 
         self._fp.seek(0)
+        self._fp.write(config.MAGIC_BYTES)
         self._fp.write(header_version)
         self._fp.write(header_metadata_offset)
         self._fp.write(header_metadata_length)
-        self._fp.write(config.MAGIC_BYTES)
 
     def write_item(self, item: str, data: Dict[str, ndarray]):
         """
