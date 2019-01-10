@@ -7,7 +7,7 @@ Syrah works by loading the dataset metadata in memory (arrays type, position in 
 
 This package contains the high level implementation to read and write syrah files as well as wrappers for the PyTorch dataset API.
 
-## 1. Installation
+## Installation
 
 
 ```bash
@@ -16,7 +16,7 @@ cd syrah
 pip install --upgrade .
 ```
 
-## 1. Writing to a syrah file
+## Writing to a syrah file
 
 Let us first create a random dataset of fixed size float features vectors and their corresponding binary labels:
 
@@ -53,7 +53,7 @@ with File(file_path, mode='w') as syr:
 
 /!\ Important note: if a syrah File is opened in writing model outside a context manager (`with` statement) it needs to be closed explicitly using the `File.close()` method to ensure that the metadata is written at the end of the file and that the headers are properly updated.
  
-## 1. Reading from a syrah file
+## Reading from a syrah file
 
 Similar to writing we can read the whole sample as once and get a dictionary of arrays:
 
@@ -73,7 +73,7 @@ with File(file_path, mode='r') as syr:
         features = syr.get_array(str(i), 'features')
 ```
 
-## 1. PyTorch dataset API
+## PyTorch dataset API
 
 If the data does not need to be processed before being fed to the network, use a `SyrahDataset` object with a PyTorch `Dataloader`:
 
@@ -120,7 +120,7 @@ from syrah.utils.data import SyrahConcatDataset
 concat_dataset = SyrahConcatDataset([dataset_1, ...])
 ```
 
-## 1. Multiprocessing concurrency issues
+## Multiprocessing concurrency issues
 
 Syrah high level API supports multiprocess read access but each worker needs to call the `File.open()` method to get his own file object and avoid concurrency issues when reading from multiple processes:
 
@@ -148,7 +148,7 @@ for features, labels in data_generator_multi:
     ...
 ```
 
-## 1. File format summary
+## File format summary
 
 The file format is as follows:
 - headers (first 22 bytes):
