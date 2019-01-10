@@ -5,7 +5,7 @@ setup(
     version='0.1.2',
     packages=['syrah', 'syrah._hl', 'syrah.utils'],
     url='https://github.com/gsicard/syrah',
-    license='',
+    license='GNU General Public License v3 (GPLv3)',
     author='gsicard',
     description='Simple random access dataset format',
     install_requires=[

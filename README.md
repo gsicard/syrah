@@ -1,3 +1,4 @@
+**Important note:** this code is still in development, and while all documented features have been properly tested, it should still be used with caution.
 # Syrah
 Syrah (simple random access dataset format) allows for fast random access of on-disk arbitrary-type indexed arrays.
 
@@ -60,11 +61,11 @@ with File(file_path, mode='w') as syr:
         syr.write_array(str(i), 'features', features[i])
 ```
 
-/!\ Important note: if a syrah File is opened in writing model outside a context manager (`with` statement) it needs to be closed explicitly using the `File.close()` method to ensure that the metadata is written at the end of the file and that the headers are properly updated.
+**Important note:** if a syrah `File` is opened in writing mode outside a context manager (`with` statement) it needs to be closed explicitly using the `File.close()` method to ensure that the metadata is written at the end of the file and that the headers are properly updated.
  
 ## 3. Reading from a syrah file
 
-Similar to writing we can read the whole sample as once and get a dictionary of arrays:
+Similarly to writing, the whole sample can be read at once and returns a dictionary of arrays:
 
 ```python
 with File(file_path, mode='r') as syr:
@@ -73,7 +74,7 @@ with File(file_path, mode='r') as syr:
         item = syr.get_item(str(i))
 ```
 
-Or we can read each array independently:
+Or each array can be read independently:
 
 ```python
 with File(file_path, mode='r') as syr:
@@ -84,7 +85,7 @@ with File(file_path, mode='r') as syr:
 
 ## 4. PyTorch dataset API
 
-If the data does not need to be processed before being fed to the network, use a `SyrahDataset` object with a PyTorch `Dataloader`:
+If the data does not need to be preprocessed before being fed to the network, a `SyrahDataset` object can be used with a PyTorch `Dataloader`:
 
 ```python
 from syrah.utils.data import SyrahDataset
@@ -97,7 +98,7 @@ for features, labels in data_generator:
     ...
 ```
 
-If preprocessing is needed, simply override the `__init__()` and `__getitem__()` methods:
+If data preprocessing is needed, the `__init__()` and `__getitem__()` methods should be overridden:
 ```python
 class CustomSyrahDataset(SyrahDataset):
     def __init__(self, file_path: str, *args):
@@ -121,7 +122,7 @@ class CustomSyrahDataset(SyrahDataset):
         return features.astype(np.float32), label.astype(np.float32)
 ```
 
-If the dataset consists in multiple syrah files, a `SyrahConcatDataset` object can be created from a list of `SyrahDataset` objects:
+If the dataset consists of multiple syrah files, a `SyrahConcatDataset` object should be created from a list of `SyrahDataset` objects:
 
 ```python
 from syrah.utils.data import SyrahConcatDataset
@@ -148,7 +149,7 @@ p = Pool(num_workers, initializer=syr.open, initargs=(file_path, 'r'))
 p.map(read_item, range(num_samples))
 ```
 
-When using `num_workers > 1` with PyTorch `Dataloader`, `SyrahDataset.open()` also needs to be called by each worker (or `SyrahConcatDataset.open()` in case of multiple syrah files):
+Similarly, when using `num_workers > 1` with PyTorch `Dataloader`, `SyrahDataset.open()` also needs to be called by each worker (or `SyrahConcatDataset.open()` in case of multiple syrah files):
 
 ```python
 data_generator_multi = DataLoader(dataset, batch_size=32, shuffle=True, num_workers=num_workers, worker_init_fn=dataset.open)
