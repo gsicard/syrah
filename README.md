@@ -166,6 +166,6 @@ The file format is as follows:
     - 8 bytes for the serialized metadata offset (int64)
     - 8 bytes for the serialized metadata length (int64)
 - data (arbitrary size):
-    - concatenation of byte representation of all arrays in the dataset
+    - concatenation of byte representations of all arrays in the dataset
 - metadata (arbitrary size):
     - serialized metadata using bson
