@@ -28,7 +28,7 @@ pip install --upgrade .
 
 ## 2. Writing to a syrah file
 
-Let us first create a random dataset of fixed size float features vectors and their corresponding binary labels:
+Let us first create a random dataset of fixed size float feature vectors and their corresponding binary labels:
 
 ```python
 import numpy as np
@@ -49,7 +49,6 @@ file_path = '/tmp/test.syr'
 with File(file_path, mode='w') as syr:
     for i in range(num_samples):
         syr.write_item(str(i), {'label': labels[i], 'features': features[i]})
-        syr.get_item()
 ```
 
 It is also possible to write each array explicitly using the `File.write_array()` method:
