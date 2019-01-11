@@ -21,7 +21,7 @@ This package contains the high level implementation to read and write syrah file
 
 
 ```bash
-git clone https://github.com/gsicard/syrah
+git clone https://github.com/gsicard/syrah.git
 cd syrah
 pip install --upgrade .
 ```
