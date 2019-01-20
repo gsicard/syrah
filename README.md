@@ -21,14 +21,14 @@ This package contains the high level implementation to read and write syrah file
 
 
 ```bash
-git clone https://github.com/gsicard/syrah
+git clone https://github.com/gsicard/syrah.git
 cd syrah
 pip install --upgrade .
 ```
 
 ## 2. Writing to a syrah file
 
-Let us first create a random dataset of fixed size float features vectors and their corresponding binary labels:
+Let us first create a random dataset of fixed size float feature vectors and their corresponding binary labels:
 
 ```python
 import numpy as np
@@ -49,7 +49,6 @@ file_path = '/tmp/test.syr'
 with File(file_path, mode='w') as syr:
     for i in range(num_samples):
         syr.write_item(str(i), {'label': labels[i], 'features': features[i]})
-        syr.get_item()
 ```
 
 It is also possible to write each array explicitly using the `File.write_array()` method:
@@ -167,6 +166,6 @@ The file format is as follows:
     - 8 bytes for the serialized metadata offset (int64)
     - 8 bytes for the serialized metadata length (int64)
 - data (arbitrary size):
-    - concatenation of byte representation of all arrays in the dataset
+    - concatenation of byte representations of all arrays in the dataset
 - metadata (arbitrary size):
     - serialized metadata using bson
