@@ -18,10 +18,11 @@
 """
 from typing import Any, Dict, Optional, Type, AnyStr
 from types import TracebackType
-import numpy as np
 from numpy import ndarray
-import bson
 
+import numpy as np
+
+from .metadata import MetadataAbstract, MetadataReader, MetadataWriter
 from .. import version
 from .. import config
 
@@ -29,6 +30,7 @@ from .. import config
 class File:
     # TODO: add "append" mode.
     # TODO: check that metadata offset + length == file size (both "r" and "w" modes)
+    # TODO: add schema and array representation of metadata
     """
         Represent a Syrah dataset file.
     """
@@ -44,7 +46,7 @@ class File:
         self._version = None
         self._metadata_offset = None
         self._metadata_length = None
-        self._metadata = None
+        self._metadata: Optional[MetadataAbstract] = None
         self._item_offset = None
 
         self.open(file_path, mode)
@@ -77,14 +79,14 @@ class File:
             self._metadata_length = 0
             self._write_headers()
 
-            self._metadata: Dict[int, Dict[str, Dict[str, Any]]] = dict()
+            self._metadata: MetadataWriter()
             self._item_offset = config.NUM_BYTES_VERSION + config.NUM_BYTES_METADATA_LENGTH + \
                 config.NUM_BYTES_METADATA_LENGTH + config.NUM_BYTES_MAGIC_BYTES
         elif self._mode == 'r':
             self._read_headers()
 
             self._fp.seek(self._metadata_offset)
-            self._metadata = bson.loads(self._fp.read(self._metadata_length))
+            self._metadata = MetadataReader(self._fp.read(self._metadata_length))
         else:
             raise ValueError(f'Expected File opening mode to be "r" or "w", got {self._mode}.')
 
@@ -121,7 +123,7 @@ class File:
 
         self._fp.close()
 
-    def get_item(self, item: str) -> Dict[str, ndarray]:
+    def get_item(self, item: int) -> Dict[str, ndarray]:
         """
         Get an item from the dataset.
         :param item: index of the item in the dataset
@@ -133,20 +135,19 @@ class File:
             raise IOError('Trying to read item from a closed file.')
         if self._mode != 'r':
             raise IOError(f'File is expected to be opened in read mode, got {self._mode}.')
-        if item not in self._metadata:
-            raise KeyError(f'Item {item} could not be found.')
+        if item >= len(self._metadata):
+            raise IndexError(f'Item {item} out of range.')
 
-        item_metadata: Dict[str, Dict[str, Any]] = self._metadata[item]
         data: Dict[str, ndarray] = dict()
 
-        for key, array_metadata in item_metadata.items():
-            self._fp.seek(array_metadata['offset'])
-            array_serialized: AnyStr = self._fp.read(array_metadata['size'])
-            data[key]: ndarray = np.frombuffer(array_serialized, dtype=array_metadata['dtype'])
+        for key, array_metadata in self._metadata.array_keys:
+            self._fp.seek(self._metadata.get(item, key, 'offset'))
+            array_serialized: AnyStr = self._fp.read(self._metadata.get(item, key, 'size'))
+            data[key]: ndarray = np.frombuffer(array_serialized, dtype=self._metadata.get(item, key, 'dtype'))
 
         return data
 
-    def get_array(self, item: str, key: str) -> ndarray:
+    def get_array(self, item: int, key: str) -> ndarray:
         """
         Get an array from the dataset.
         :param item: index of the item in the dataset
@@ -159,17 +160,15 @@ class File:
             raise IOError('Trying to read array from a closed file.')
         if self._mode != 'r':
             raise IOError(f'File is expected to be opened in read mode, got {self._mode}.')
-        if item not in self._metadata:
-            raise KeyError(f'Item {item} could not be found.')
+        if item >= len(self._metadata):
+            raise IndexError(f'Item {item} out of range.')
         if key not in self._metadata[item]:
             raise KeyError(f'Key {key} could not be found in item {item}.')
 
-        array_metadata = self._metadata[item][key]
+        self._fp.seek(self._metadata.get(item, key, 'offset'))
+        array_serialized = self._fp.read(self._metadata.get(item, key, 'size'))
 
-        self._fp.seek(array_metadata['offset'])
-        array_serialized = self._fp.read(array_metadata['size'])
-
-        return np.frombuffer(array_serialized, dtype=array_metadata['dtype'])
+        return np.frombuffer(array_serialized, dtype=self._metadata.get(item, key, 'dtype'))
 
     def num_items(self) -> int:
         """
@@ -229,13 +228,15 @@ class File:
         :param data: dictionary of arrays
         :return:
         """
-        if item in self._metadata:
-            raise KeyError(f'Item {item} already in dataset.')
-
+        if item != len(self._metadata):
+            raise IndexError(f'Sequential item writing supported only:'
+                             f' trying to write item {item} after {len(self._metadata)} items.')
+        # TODO: finish re-implementing item writing using new metadata class
         for key, array in data.items():
             self.write_array(item, key, array)
 
     def write_array(self, item: str, key: str, array: ndarray):
+        # TODO: remove method and merge code with write_item
         """
         Write an array with the given item index and key to the dataset.
         :param item: index of the item
@@ -303,7 +304,7 @@ class File:
         if self._mode != 'w':
             raise IOError(f'File is expected to be opened in write mode, got {self._mode}.')
 
-        metadata_serialized: AnyStr = bson.dumps(self._metadata)
+        metadata_serialized: AnyStr = self._metadata.tobytes()
 
         self._metadata_offset = self._item_offset
         self._metadata_length = len(metadata_serialized)
