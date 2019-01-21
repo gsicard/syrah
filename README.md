@@ -41,23 +41,14 @@ features = np.random.random(size=(num_samples, num_features))
 labels = np.random.randint(2, size=(num_samples, 1))
 ```
 
-Each sample is written as a dictionary of arrays using the `File.write_item()` method:
+Each sample is added as a dictionary of arrays using the `File.add_item()` method:
 
 ```python
 file_path = '/tmp/test.syr'
 
 with File(file_path, mode='w') as syr:
     for i in range(num_samples):
-        syr.write_item(str(i), {'label': labels[i], 'features': features[i]})
-```
-
-It is also possible to write each array explicitly using the `File.write_array()` method:
-
-```python
-with File(file_path, mode='w') as syr:
-    for i in range(num_samples):
-        syr.write_array(str(i), 'label', labels[i])
-        syr.write_array(str(i), 'features', features[i])
+        syr.add_item({'label': labels[i], 'features': features[i]})
 ```
 
 **Important note:** if a syrah `File` is opened in writing mode outside a context manager (`with` statement) it needs to be closed explicitly using the `File.close()` method to ensure that the metadata is written at the end of the file and that the headers are properly updated.
@@ -70,7 +61,7 @@ Similarly to writing, the whole sample can be read at once and returns a diction
 with File(file_path, mode='r') as syr:
     for i in range(num_samples):
         # item is a dictionary with keys 'label' and 'features'
-        item = syr.get_item(str(i))
+        item = syr.get_item(i)
 ```
 
 Or each array can be read independently:
@@ -78,8 +69,8 @@ Or each array can be read independently:
 ```python
 with File(file_path, mode='r') as syr:
     for i in range(num_samples):
-        label = syr.get_array(str(i), 'label')
-        features = syr.get_array(str(i), 'features')
+        label = syr.get_array(i, 'label')
+        features = syr.get_array(i, 'features')
 ```
 
 ## 4. PyTorch dataset API
@@ -148,7 +139,7 @@ p = Pool(num_workers, initializer=syr.open, initargs=(file_path, 'r'))
 p.map(read_item, range(num_samples))
 ```
 
-Similarly, when using `num_workers > 1` with PyTorch `Dataloader`, `SyrahDataset.open()` also needs to be called by each worker (or `SyrahConcatDataset.open()` in case of multiple syrah files):
+Similarly, when using `num_workers > 0` with PyTorch `Dataloader`, `SyrahDataset.open()` also needs to be called by each worker (or `SyrahConcatDataset.open()` in case of multiple syrah files):
 
 ```python
 data_generator_multi = DataLoader(dataset, batch_size=32, shuffle=True, num_workers=num_workers, worker_init_fn=dataset.open)
