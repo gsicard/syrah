@@ -1,8 +1,31 @@
-from typing import List, Dict, AnyStr, Optional
+"""
+    Implements high-level support for metadata objects.
+
+    This file is part of Syrah.
+
+    Syrah is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Syrah is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Syrah.  If not, see <https://www.gnu.org/licenses/>.
+"""
+from typing import List, Dict, AnyStr, Optional, Any
 
 import numpy as np
 import bson
 
+"""
+    Types for the array metadata values:
+        - [type] means the metadata is a list of different values of type "type" for each item
+        - type  means the metadata is a single value of type "type" for all items
+"""
 metadata_types = {
     'offset': [np.int64],
     'size': [np.int64],
@@ -11,14 +34,29 @@ metadata_types = {
 
 
 class AbstractMetadata:
+    """
+        Represent a metadata object.
+    """
     def __init__(self):
+        """
+        Create a new metadata object
+        """
         self.metadata: Optional[Dict[AnyStr, Dict[AnyStr, List]]] = None
         self.length: int = 0
 
-    def __len__(self):
+    def __len__(self) -> int:
+        """
+        Return the length of the metadata.
+        :return: length of the metadata
+        """
         return self.length
 
     def update_length(self, length: Optional[int] = None):
+        """
+        Check metadata arrays for proper length and update the internal state.
+        :param length: optional length to check
+        :return:
+        """
         length_initialized = False
 
         for array_key in self.metadata.keys():
@@ -38,7 +76,15 @@ class AbstractMetadata:
 
 
 class MetadataWriter(AbstractMetadata):
+    """
+    Represent a metadata writer object.
+    """
     def add_item(self, item_metadata: Dict[AnyStr, Dict[AnyStr, int]]):
+        """
+        Add a new item to the metadata.
+        :param item_metadata: dictionary of array metadata
+        :return:
+        """
         # TODO: check metadata types consistency with previous item
         if self.length == 0:
             self.metadata = dict()
@@ -65,6 +111,10 @@ class MetadataWriter(AbstractMetadata):
         self.length += 1
 
     def tobytes(self) -> AnyStr:
+        """
+        Serializes the metadata.
+        :return: serialized metadata
+        """
         self.update_length(self.length)
 
         metadata_serialized = dict()
@@ -82,12 +132,21 @@ class MetadataWriter(AbstractMetadata):
 
 class MetadataReader(AbstractMetadata):
     def __init__(self, serialized: Optional[AnyStr] = None):
+        """
+        Create a new metadata reader object and initialize it if necessary.
+        :param serialized: serialized metadata for initialization
+        """
         super().__init__()
 
         if serialized is not None:
             self.frombuffer(serialized)
 
     def frombuffer(self, serialized: AnyStr):
+        """
+        Deserialize metadata given as an argument.
+        :param serialized: serialized metadata
+        :return:
+        """
         metadata_serialized = bson.loads(serialized)
         self.metadata = dict()
 
@@ -102,7 +161,14 @@ class MetadataReader(AbstractMetadata):
 
         self.update_length()
 
-    def get(self, item: int, array_key: AnyStr, metadata_key: AnyStr):
+    def get(self, item: int, array_key: AnyStr, metadata_key: AnyStr) -> Any:
+        """
+        Get the metadata for the specified item, array and metadata key.
+        :param item: index of item
+        :param array_key: key of array
+        :param metadata_key: key of metadata
+        :return: value of the metadata
+        """
         if isinstance(metadata_types[metadata_key], list):
             metadata_value = self.metadata[array_key][metadata_key][item]
         else:

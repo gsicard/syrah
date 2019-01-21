@@ -54,12 +54,12 @@ def create_test_data(base_path, num_items, max_items):
         fixed_len_array = np.random.random(FIXED_LEN).astype(np.float32)
         var_len_array = np.random.randint(0, MAX_VAL, size=np.random.randint(MIN_VAR_LEN, MAX_VAR_LEN), dtype=np.int32)
 
-        fp_syr.write_item(str(i_local), {
-                                   'idx': np.array([i], dtype=np.int32),
-                                   'label': label,
-                                   'fixed_len_array': fixed_len_array,
-                                   'var_len_array': var_len_array
-                                   })
+        fp_syr.add_item({
+            'idx': np.array([i], dtype=np.int32),
+            'label': label,
+            'fixed_len_array': fixed_len_array,
+            'var_len_array': var_len_array
+        })
         pickled_item = dict()
         pickled_item['label'] = label
         pickled_item['fixed_len_array'] = fixed_len_array
@@ -79,7 +79,8 @@ data_dict = create_test_data(BASE_PATH, NUM_ITEMS, MAX_ITEMS)
 class TestSingleDataset(unittest.TestCase):
     def test_sequential_item_read(self):
         syr_dataset = SyrahDataset(BASE_PATH + '_0' + '.syr', keys=['idx', 'label', 'fixed_len_array', 'var_len_array'])
-        syr_dataloader = DataLoader(syr_dataset, shuffle=False, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS, worker_init_fn=syr_dataset.open)
+        syr_dataloader = DataLoader(syr_dataset, shuffle=False, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS,
+                                    worker_init_fn=syr_dataset.open)
 
         for idx, label, fixed_len_array, var_len_array in syr_dataloader:
             pickled_item = data_dict[str(idx[0].numpy()[0])]
@@ -93,7 +94,8 @@ class TestConcatDataset(unittest.TestCase):
         syr_dataset_0 = SyrahDataset(BASE_PATH + '_0' + '.syr', keys=['idx', 'label', 'fixed_len_array', 'var_len_array'])
         syr_dataset_1 = SyrahDataset(BASE_PATH + '_1' + '.syr', keys=['idx', 'label', 'fixed_len_array', 'var_len_array'])
         syr_dataset = SyrahConcatDataset([syr_dataset_0, syr_dataset_1])
-        syr_dataloader = DataLoader(syr_dataset, shuffle=False, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS, worker_init_fn=syr_dataset.open)
+        syr_dataloader = DataLoader(syr_dataset, shuffle=False, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS,
+                                    worker_init_fn=syr_dataset.open)
 
         for idx, label, fixed_len_array, var_len_array in syr_dataloader:
             pickled_item = data_dict[str(idx[0].numpy()[0])]
