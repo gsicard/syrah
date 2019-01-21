@@ -22,15 +22,12 @@ from numpy import ndarray
 
 import numpy as np
 
-from .metadata import MetadataAbstract, MetadataReader, MetadataWriter
+from .metadata import AbstractMetadata, MetadataReader, MetadataWriter
 from .. import version
 from .. import config
 
 
 class File:
-    # TODO: add "append" mode.
-    # TODO: check that metadata offset + length == file size (both "r" and "w" modes)
-    # TODO: add schema and array representation of metadata
     """
         Represent a Syrah dataset file.
     """
@@ -46,7 +43,7 @@ class File:
         self._version = None
         self._metadata_offset = None
         self._metadata_length = None
-        self._metadata: Optional[MetadataAbstract] = None
+        self._metadata: Optional[AbstractMetadata] = None
         self._item_offset = None
 
         self.open(file_path, mode)
@@ -79,7 +76,7 @@ class File:
             self._metadata_length = 0
             self._write_headers()
 
-            self._metadata: MetadataWriter()
+            self._metadata = MetadataWriter()
             self._item_offset = config.NUM_BYTES_VERSION + config.NUM_BYTES_METADATA_LENGTH + \
                 config.NUM_BYTES_METADATA_LENGTH + config.NUM_BYTES_MAGIC_BYTES
         elif self._mode == 'r':
@@ -162,8 +159,8 @@ class File:
             raise IOError(f'File is expected to be opened in read mode, got {self._mode}.')
         if item >= len(self._metadata):
             raise IndexError(f'Item {item} out of range.')
-        if key not in self._metadata[item]:
-            raise KeyError(f'Key {key} could not be found in item {item}.')
+        if key not in self._metadata.metadata:
+            raise KeyError(f'Key {key} could not be found in metadata.')
 
         self._fp.seek(self._metadata.get(item, key, 'offset'))
         array_serialized = self._fp.read(self._metadata.get(item, key, 'size'))
@@ -221,27 +218,11 @@ class File:
         self._fp.write(header_metadata_offset)
         self._fp.write(header_metadata_length)
 
-    def write_item(self, item: str, data: Dict[str, ndarray]):
+    def add_item(self, data: Dict[str, ndarray]):
         """
-        Write an item with the given item index to the dataset.
+        Write an item with the given index to the dataset.
         :param item: index of the item
         :param data: dictionary of arrays
-        :return:
-        """
-        if item != len(self._metadata):
-            raise IndexError(f'Sequential item writing supported only:'
-                             f' trying to write item {item} after {len(self._metadata)} items.')
-        # TODO: finish re-implementing item writing using new metadata class
-        for key, array in data.items():
-            self.write_array(item, key, array)
-
-    def write_array(self, item: str, key: str, array: ndarray):
-        # TODO: remove method and merge code with write_item
-        """
-        Write an array with the given item index and key to the dataset.
-        :param item: index of the item
-        :param key: key of the array
-        :param array: array to write
         :return:
         """
         if self._fp is None:
@@ -250,31 +231,31 @@ class File:
             raise IOError('Trying to write an item to a closed file.')
         if self._mode != 'w':
             raise IOError(f'File is expected to be opened in write mode, got {self._mode}.')
-        if type(item) is not str:
-            raise ValueError(f'Expected key type to be str, got {type(item)}.')
-        if type(key) is not str:
-            raise ValueError(f'Expected key type to be str, got {type(key)}.')
-        if type(array) is not ndarray:
-            raise ValueError(f'Expected value type to be ndarray, got {type(array)}.')
 
-        if item not in self._metadata:
-            self._metadata[item] = dict()
+        item_offset = self._item_offset
+        metadata_item = dict()
 
-        if key in self._metadata[item]:
-            raise KeyError(f'Key {key} already in item {item}.')
+        for array_key, array_value in data.items():
+            if type(array_key) is not str:
+                raise ValueError(f'Expected array_key type to be str, got {type(array_key)}.')
+            if type(array_value) is not ndarray:
+                raise ValueError(f'Expected value type to be ndarray, got {type(array_value)}.')
 
-        array_serialized: AnyStr = array.tobytes()
+            array_serialized: AnyStr = array_value.tobytes()
 
-        self._fp.seek(self._item_offset)
-        self._fp.write(array_serialized)
+            self._fp.seek(item_offset)
+            self._fp.write(array_serialized)
 
-        array_metadata = dict()
-        array_metadata['dtype'] = str(array.dtype)
-        array_metadata['offset'] = self._item_offset
-        array_metadata['size'] = len(array_serialized)
+            array_metadata = dict()
+            array_metadata['offset'] = item_offset
+            array_metadata['size'] = len(array_serialized)
+            array_metadata['dtype'] = str(array_value.dtype)
 
-        self._metadata[item][key] = array_metadata
-        self._item_offset += len(array_serialized)
+            metadata_item[array_key] = array_metadata
+            item_offset += len(array_serialized)
+
+        self._metadata.add_item(metadata_item)
+        self._item_offset = item_offset
 
     @staticmethod
     def _version_to_string(version_bytes: bytes) -> str:

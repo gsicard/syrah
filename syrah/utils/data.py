@@ -52,7 +52,7 @@ class SyrahDataset(Dataset):
         :param item: index of the item
         :return: tuple of arrays
         """
-        return tuple([self.syr.get_array(str(item), key) for key in self.keys])
+        return tuple([self.syr.get_array(item, key) for key in self.keys])
 
     def __len__(self) -> int:
         """
