@@ -23,6 +23,7 @@ from numpy import ndarray
 import numpy as np
 
 from .metadata import AbstractMetadata, MetadataReader, MetadataWriter
+from .serialization import *
 from .. import version
 from .. import config
 
@@ -140,7 +141,7 @@ class File:
         for key, array_metadata in self._metadata.array_keys:
             self._fp.seek(self._metadata.get(item, key, 'offset'))
             array_serialized: AnyStr = self._fp.read(self._metadata.get(item, key, 'size'))
-            data[key]: ndarray = np.frombuffer(array_serialized, dtype=self._metadata.get(item, key, 'dtype'))
+            data[key]: ndarray = deserialize_array(array_serialized, dtype=self._metadata.get(item, key, 'dtype'))
 
         return data
 
@@ -165,7 +166,7 @@ class File:
         self._fp.seek(self._metadata.get(item, key, 'offset'))
         array_serialized = self._fp.read(self._metadata.get(item, key, 'size'))
 
-        return np.frombuffer(array_serialized, dtype=self._metadata.get(item, key, 'dtype'))
+        return deserialize_array(array_serialized, self._metadata.get(item, key, 'dtype'))
 
     def num_items(self) -> int:
         """
@@ -241,7 +242,7 @@ class File:
             if type(array_value) is not ndarray:
                 raise ValueError(f'Expected value type to be ndarray, got {type(array_value)}.')
 
-            array_serialized: AnyStr = array_value.tobytes()
+            array_serialized, dtype = serialize_array(array_value)
 
             self._fp.seek(item_offset)
             self._fp.write(array_serialized)
@@ -249,7 +250,7 @@ class File:
             array_metadata = dict()
             array_metadata['offset'] = item_offset
             array_metadata['size'] = len(array_serialized)
-            array_metadata['dtype'] = str(array_value.dtype)
+            array_metadata['dtype'] = dtype
 
             metadata_item[array_key] = array_metadata
             item_offset += len(array_serialized)
