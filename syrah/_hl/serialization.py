@@ -39,7 +39,9 @@ dtypes = {
     23: 'float16',
     11: 'float32',
     12: 'float64',
-    13: 'float128'
+    13: 'float128',
+
+    19: 'str'
 }
 
 """
@@ -74,8 +76,8 @@ def deserialize_array(array_serialized: AnyStr, data_type: str) -> ndarray:
         raise TypeError(f'Type {data_type} is not supported. Supported types are: {", ".join(dtype_names.keys())}')
 
     if data_type == 'str':
-        array = np.frombuffer(array_serialized, dtype='<U1')
-        return np.array(''.join(array))
+        string = array_serialized.decode('utf-8')
+        return np.array([string])
     else:
         array = np.frombuffer(array_serialized, dtype=data_type)
 
@@ -90,4 +92,9 @@ def serialize_array(array: ndarray) -> Tuple[AnyStr, str]:
     """
     data_type = format_dtype(array.dtype)
 
-    return array.tobytes(), data_type
+    if data_type == 'str':
+        array_serialized = bytes(''.join(array), encoding='utf-8')
+    else:
+        array_serialized = array.tobytes()
+
+    return array_serialized, data_type
