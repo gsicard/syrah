@@ -47,7 +47,7 @@ dtypes = {
 """
 Supported types by name
 """
-dtype_names = {value: key for key, value in dtypes}
+dtype_names = {value: key for key, value in dtypes.items()}
 
 
 def format_dtype(data_type: dtype) -> str:
