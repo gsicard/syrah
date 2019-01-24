@@ -141,7 +141,7 @@ class File:
         for key, array_metadata in self._metadata.array_keys:
             self._fp.seek(self._metadata.get(item, key, 'offset'))
             array_serialized: AnyStr = self._fp.read(self._metadata.get(item, key, 'size'))
-            data[key]: ndarray = deserialize_array(array_serialized, dtype=self._metadata.get(item, key, 'dtype'))
+            data[key]: ndarray = deserialize_array(array_serialized, self._metadata.get(item, key, 'dtype'))
 
         return data
 
