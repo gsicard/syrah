@@ -17,6 +17,7 @@
     along with Syrah.  If not, see <https://www.gnu.org/licenses/>.
 """
 from typing import List, Dict, AnyStr, Optional, Any
+from numpy import ndarray
 
 import numpy as np
 import bson
@@ -41,7 +42,7 @@ class AbstractMetadata:
         """
         Create a new metadata object
         """
-        self.metadata: Optional[Dict[AnyStr, Dict[AnyStr, List]]] = None
+        self.metadata: Optional[Dict[AnyStr, Dict[AnyStr, ndarray]]] = None
         self.length: int = 0
 
     def __len__(self) -> int:
@@ -85,14 +86,14 @@ class MetadataWriter(AbstractMetadata):
         :param item_metadata: dictionary of array metadata
         :return:
         """
-        # TODO: check metadata types consistency with previous item
+        # TODO: check metadata types consistency with expected type
         if self.length == 0:
             self.metadata = dict()
             for array_key in item_metadata.keys():
                 self.metadata[array_key] = dict()
                 for metadata_key in metadata_types.keys():
                     if isinstance(metadata_types[metadata_key], list):
-                        self.metadata[array_key][metadata_key] = []
+                        self.metadata[array_key][metadata_key] = np.array([], dtype=metadata_types[metadata_key][0])
 
         if set(item_metadata.keys()) != set(self.metadata.keys()):
             raise KeyError('Array keys not consistent with previous metadata.')
@@ -104,7 +105,8 @@ class MetadataWriter(AbstractMetadata):
 
             for metadata_key in metadata_types.keys():
                 if isinstance(metadata_types[metadata_key], list):
-                    self.metadata[array_key][metadata_key] += [array_metadata[metadata_key]]
+                    self.metadata[array_key][metadata_key] += np.append(self.metadata[array_key][metadata_key],
+                                                                        array_metadata[metadata_key])
                 else:
                     self.metadata[array_key][metadata_key] = array_metadata[metadata_key]
 
@@ -122,8 +124,7 @@ class MetadataWriter(AbstractMetadata):
             metadata_serialized[array_key] = dict()
             for metadata_key in metadata_types.keys():
                 if isinstance(metadata_types[metadata_key], list):
-                    metadata_serialized[array_key][metadata_key] = np.array(self.metadata[array_key][metadata_key],
-                                                                            dtype=metadata_types[metadata_key][0]).tobytes()
+                    metadata_serialized[array_key][metadata_key] = self.metadata[array_key][metadata_key].tobytes()
                 else:
                     metadata_serialized[array_key][metadata_key] = self.metadata[array_key][metadata_key]
 
@@ -155,7 +156,7 @@ class MetadataReader(AbstractMetadata):
             for metadata_key in metadata_types.keys():
                 if isinstance(metadata_types[metadata_key], list):
                     self.metadata[array_key][metadata_key] = np.frombuffer(metadata_serialized[array_key][metadata_key],
-                                                                           dtype=metadata_types[metadata_key][0]).tolist()
+                                                                           dtype=metadata_types[metadata_key][0])
                 else:
                     self.metadata[array_key][metadata_key] = metadata_serialized[array_key][metadata_key]
 
