@@ -33,7 +33,7 @@ metadata_types = {
     'dtype': str
 }
 
-
+# TODO: wrapp arrays with multiprocessing.Array: https://stackoverflow.com/questions/5549190/is-shared-readonly-data-copied-to-different-processes-for-multiprocessing/5550156#5550156
 class AbstractMetadata:
     """
         Represent a metadata object.
