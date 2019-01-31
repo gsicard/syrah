@@ -16,11 +16,13 @@
     You should have received a copy of the GNU General Public License
     along with Syrah.  If not, see <https://www.gnu.org/licenses/>.
 """
-from typing import List, Dict, AnyStr, Optional, Any
-from numpy import ndarray
+from typing import Dict, AnyStr, Optional, Any
 
 import numpy as np
 import bson
+from multiprocessing import Array
+import ctypes
+
 
 """
     Types for the array metadata values:
@@ -33,6 +35,12 @@ metadata_types = {
     'dtype': str
 }
 
+metadata_ctypes = {
+    'offset': [ctypes.c_int64],
+    'size': [ctypes.c_int64],
+    'dtype': str
+}
+
 # TODO: wrapp arrays with multiprocessing.Array: https://stackoverflow.com/questions/5549190/is-shared-readonly-data-copied-to-different-processes-for-multiprocessing/5550156#5550156
 class AbstractMetadata:
     """
@@ -42,7 +50,7 @@ class AbstractMetadata:
         """
         Create a new metadata object
         """
-        self.metadata: Optional[Dict[AnyStr, Dict[AnyStr, ndarray]]] = None
+        self.metadata: Optional[Dict[AnyStr, Dict[AnyStr, Any]]] = None
         self.length: int = 0
 
     def __len__(self) -> int:
@@ -155,8 +163,9 @@ class MetadataReader(AbstractMetadata):
             self.metadata[array_key] = dict()
             for metadata_key in metadata_types.keys():
                 if isinstance(metadata_types[metadata_key], list):
-                    self.metadata[array_key][metadata_key] = np.frombuffer(metadata_serialized[array_key][metadata_key],
-                                                                           dtype=metadata_types[metadata_key][0])
+                    array = np.frombuffer(metadata_serialized[array_key][metadata_key],
+                                          dtype=metadata_types[metadata_key][0])
+                    self.metadata[array_key][metadata_key] = Array(metadata_ctypes[metadata_key][0], array, lock=False)
                 else:
                     self.metadata[array_key][metadata_key] = metadata_serialized[array_key][metadata_key]
 
