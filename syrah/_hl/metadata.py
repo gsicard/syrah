@@ -17,6 +17,7 @@
     along with Syrah.  If not, see <https://www.gnu.org/licenses/>.
 """
 from typing import Dict, AnyStr, Optional, Any
+from numpy import ndarray
 
 import numpy as np
 import bson
@@ -41,7 +42,7 @@ metadata_ctypes = {
     'dtype': str
 }
 
-# TODO: wrapp arrays with multiprocessing.Array: https://stackoverflow.com/questions/5549190/is-shared-readonly-data-copied-to-different-processes-for-multiprocessing/5550156#5550156
+
 class AbstractMetadata:
     """
         Represent a metadata object.
@@ -51,6 +52,7 @@ class AbstractMetadata:
         Create a new metadata object
         """
         self.metadata: Optional[Dict[AnyStr, Dict[AnyStr, Any]]] = None
+        self.data: Optional[ndarray] = None
         self.length: int = 0
 
     def __len__(self) -> int:
@@ -59,29 +61,6 @@ class AbstractMetadata:
         :return: length of the metadata
         """
         return self.length
-
-    def update_length(self, length: Optional[int] = None):
-        """
-        Check metadata arrays for proper length and update the internal state.
-        :param length: optional length to check
-        :return:
-        """
-        length_initialized = False
-
-        for array_key in self.metadata.keys():
-            for metadata_key in metadata_types.keys():
-                if isinstance(metadata_types[metadata_key], list):
-                    num_items = len(self.metadata[array_key][metadata_key])
-
-                    if not length_initialized:
-                        if length is None:
-                            length = num_items
-                        length_initialized = True
-                    if num_items != length:
-                        raise ValueError(f'Size of {metadata_key} for array {array_key} do not match expected value:'
-                                         f' {num_items} != {length}')
-
-        self.length = length
 
 
 class MetadataWriter(AbstractMetadata):
@@ -94,29 +73,37 @@ class MetadataWriter(AbstractMetadata):
         :param item_metadata: dictionary of array metadata
         :return:
         """
-        # TODO: check metadata types consistency with expected type
         if self.length == 0:
             self.metadata = dict()
-            for array_key in item_metadata.keys():
+            self.data = np.empty([len(item_metadata.keys()) * len(metadata_types.keys()), 0], dtype=np.int64)
+
+            for array_index, (array_key, array_metadata) in enumerate(item_metadata.items()):
+                if set(array_metadata.keys()) != set(metadata_types.keys()):
+                    raise KeyError(f'Metadata keys: {", ".join(array_metadata.keys())} do not match:'
+                                   f' {", ".join(metadata_types.keys())}.')
+
                 self.metadata[array_key] = dict()
-                for metadata_key in metadata_types.keys():
+                for metadata_index, metadata_key in enumerate(metadata_types.keys()):
                     if isinstance(metadata_types[metadata_key], list):
-                        self.metadata[array_key][metadata_key] = np.array([], dtype=metadata_types[metadata_key][0])
+                        self.metadata[array_key][metadata_key] = array_index * len(metadata_types.keys()) + metadata_index
+                    else:
+                        self.metadata[array_key][metadata_key] = array_metadata[metadata_key]
 
         if set(item_metadata.keys()) != set(self.metadata.keys()):
             raise KeyError('Array keys not consistent with previous metadata.')
 
-        for array_key, array_metadata in item_metadata.items():
+        item_data = np.empty([len(item_metadata.keys()) * len(metadata_types.keys()), 1])
+
+        for array_index, (array_key, array_metadata) in enumerate(item_metadata.items()):
             if set(array_metadata.keys()) != set(metadata_types.keys()):
-                raise KeyError(f'Metadata keys: {", ".join(array_metadata.keys())} do not match requirements:'
+                raise KeyError(f'Metadata keys: {", ".join(array_metadata.keys())} do not match:'
                                f' {", ".join(metadata_types.keys())}.')
 
-            for metadata_key in metadata_types.keys():
+            for metadata_index, metadata_key in enumerate(metadata_types.keys()):
                 if isinstance(metadata_types[metadata_key], list):
-                    self.metadata[array_key][metadata_key] += np.append(self.metadata[array_key][metadata_key],
-                                                                        array_metadata[metadata_key])
-                else:
-                    self.metadata[array_key][metadata_key] = array_metadata[metadata_key]
+                    item_data[self.metadata[array_key][metadata_key]] = array_metadata[metadata_key]
+
+        self.data = np.concatenate((self.data, item_data), axis=1)
 
         self.length += 1
 
@@ -125,14 +112,12 @@ class MetadataWriter(AbstractMetadata):
         Serializes the metadata.
         :return: serialized metadata
         """
-        self.update_length(self.length)
-
         metadata_serialized = dict()
         for array_key in self.metadata.keys():
             metadata_serialized[array_key] = dict()
             for metadata_key in metadata_types.keys():
                 if isinstance(metadata_types[metadata_key], list):
-                    metadata_serialized[array_key][metadata_key] = self.metadata[array_key][metadata_key].tobytes()
+                    metadata_serialized[array_key][metadata_key] = self.data[self.metadata[array_key][metadata_key], :].tobytes()
                 else:
                     metadata_serialized[array_key][metadata_key] = self.metadata[array_key][metadata_key]
 
@@ -158,18 +143,20 @@ class MetadataReader(AbstractMetadata):
         """
         metadata_serialized = bson.loads(serialized)
         self.metadata = dict()
+        arrays_list = []
 
         for array_key in metadata_serialized.keys():
             self.metadata[array_key] = dict()
             for metadata_key in metadata_types.keys():
                 if isinstance(metadata_types[metadata_key], list):
-                    array = np.frombuffer(metadata_serialized[array_key][metadata_key],
-                                          dtype=metadata_types[metadata_key][0])
-                    self.metadata[array_key][metadata_key] = Array(metadata_ctypes[metadata_key][0], array, lock=False)
+                    self.metadata[array_key][metadata_key] = len(arrays_list)
+                    arrays_list.append(np.frombuffer(metadata_serialized[array_key][metadata_key],
+                                                     dtype=metadata_types[metadata_key][0]))
                 else:
                     self.metadata[array_key][metadata_key] = metadata_serialized[array_key][metadata_key]
 
-        self.update_length()
+        self.data = np.stack(arrays_list)
+        self.length = self.data.shape[1]
 
     def get(self, item: int, array_key: AnyStr, metadata_key: AnyStr) -> Any:
         """
@@ -180,7 +167,7 @@ class MetadataReader(AbstractMetadata):
         :return: value of the metadata
         """
         if isinstance(metadata_types[metadata_key], list):
-            metadata_value = self.metadata[array_key][metadata_key][item]
+            metadata_value = self.data[self.metadata[array_key][metadata_key]][item]
         else:
             metadata_value = self.metadata[array_key][metadata_key]
 
