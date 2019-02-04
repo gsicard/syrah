@@ -113,7 +113,7 @@ class MetadataWriter(AbstractMetadata):
 
             for metadata_key in metadata_types.keys():
                 if isinstance(metadata_types[metadata_key], list):
-                    self.metadata[array_key][metadata_key] += np.append(self.metadata[array_key][metadata_key],
+                    self.metadata[array_key][metadata_key] = np.append(self.metadata[array_key][metadata_key],
                                                                         array_metadata[metadata_key])
                 else:
                     self.metadata[array_key][metadata_key] = array_metadata[metadata_key]
