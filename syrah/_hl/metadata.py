@@ -16,12 +16,12 @@
     You should have received a copy of the GNU General Public License
     along with Syrah.  If not, see <https://www.gnu.org/licenses/>.
 """
-from typing import Dict, AnyStr, Optional, Any
+from typing import Union, Dict, AnyStr, Optional, Any
 from numpy import ndarray
 
 import numpy as np
 import bson
-from multiprocessing import Array
+import multiprocessing as mp
 import ctypes
 
 
@@ -43,6 +43,16 @@ metadata_ctypes = {
 }
 
 
+class MpNdArray:
+    def __init__(self, array: ndarray):
+        self.shape = array.shape
+        self.dtype = array.dtype
+        self.data = mp.RawArray(self.dtype.char, array.ravel())
+
+    def __getitem__(self, item):
+        return self.data[np.ravel_multi_index(item, dims=self.shape)]
+
+
 class AbstractMetadata:
     """
         Represent a metadata object.
@@ -52,7 +62,7 @@ class AbstractMetadata:
         Create a new metadata object
         """
         self.metadata: Optional[Dict[AnyStr, Dict[AnyStr, Any]]] = None
-        self.data: Optional[ndarray] = None
+        self.data: Optional[Union[ndarray, MpNdArray]] = None
         self.length: int = 0
 
     def __len__(self) -> int:
@@ -155,8 +165,8 @@ class MetadataReader(AbstractMetadata):
                 else:
                     self.metadata[array_key][metadata_key] = metadata_serialized[array_key][metadata_key]
 
-        self.data = np.stack(arrays_list)
-        self.length = self.data.shape[1]
+        self.data = MpNdArray(np.array(arrays_list))
+        self.length = len(arrays_list[0])
 
     def get(self, item: int, array_key: AnyStr, metadata_key: AnyStr) -> Any:
         """
@@ -167,7 +177,7 @@ class MetadataReader(AbstractMetadata):
         :return: value of the metadata
         """
         if isinstance(metadata_types[metadata_key], list):
-            metadata_value = self.data[self.metadata[array_key][metadata_key]][item]
+            metadata_value = self.data[self.metadata[array_key][metadata_key], item]
         else:
             metadata_value = self.metadata[array_key][metadata_key]
 
