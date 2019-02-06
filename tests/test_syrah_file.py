@@ -24,121 +24,113 @@ from numpy import ndarray
 from multiprocessing import Pool
 
 
-class SyrFileTestEnvironment:
-    def setUp(self):
-        self.syr_path = '/tmp/syrah_test_data.syr'
-        self.num_items = 1_000
-        self.num_workers = 8
-        self.num_classes = 10
-        self.fixed_len = 1_000
-        self.max_val = 1_000
-        self.min_var_len = 100
-        self.max_var_len = 1_000
+def create_test_data(num_items, num_classes, fixed_len, max_val, min_var_len, max_var_len):
+    data_dict = dict()
 
-        self.create_test_data()
+    with File(syr_path, 'w') as syr:
+        for i in range(num_items):
+            label = np.random.randint(0, num_classes, size=1, dtype=np.int32)
+            fixed_len_array = np.random.random(fixed_len).astype(np.float32)
+            var_len_array = np.random.randint(0, max_val,
+                                              size=np.random.randint(min_var_len, max_var_len),
+                                              dtype=np.int32)
+            syr.add_item({
+                'label': label,
+                'fixed_len_array': fixed_len_array,
+                'var_len_array': var_len_array
+                })
 
-    def create_test_data(self):
-        self.data_dict = dict()
+            item = dict()
+            item['label'] = label
+            item['fixed_len_array'] = fixed_len_array
+            item['var_len_array'] = var_len_array
 
-        with File(self.syr_path, 'w') as fp_syr:
-            for i in range(self.num_items):
-                label = np.random.randint(0, self.num_classes, size=1, dtype=np.int32)
-                fixed_len_array = np.random.random(self.fixed_len).astype(np.float32)
-                var_len_array = np.random.randint(0, self.max_val,
-                                                  size=np.random.randint(self.min_var_len, self.max_var_len),
-                                                  dtype=np.int32)
-                fp_syr.write_item(str(i), {'label': label,
-                                           'fixed_len_array': fixed_len_array,
-                                           'var_len_array': var_len_array
-                                           })
-                item = dict()
-                item['label'] = label
-                item['fixed_len_array'] = fixed_len_array
-                item['var_len_array'] = var_len_array
-
-                self.data_dict[str(i)] = item
-
-    def assert_item_read(self, i):
-        item: Dict[str, ndarray] = self.data_dict[str(i)]
-        syr_item: Dict[str, ndarray] = self.fp_syr.get_item(str(i))
-
-        for key, value in syr_item.items():
-            assert np.all(item[key] == value)
-
-    def assert_array_read(self, i):
-        item: Dict[str, ndarray] = self.data_dict[str(i)]
-
-        for key, value in item.items():
-            array = self.fp_syr.get_array(str(i), key)
-            assert np.all(array == value)
+            data_dict[i] = item
+            
+    return data_dict
 
 
-class TestSingleMethods(SyrFileTestEnvironment, unittest.TestCase):
+syr_path = '/tmp/syrah_test_data.syr'
+num_items = 1_000
+num_workers = 8
+num_classes = 10
+fixed_len = 1_000
+max_val = 1_000
+min_var_len = 100
+max_var_len = 1_000
+
+
+data_dict = create_test_data(num_items, num_classes, fixed_len, max_val, min_var_len, max_var_len)
+
+syr = File(syr_path, 'r')
+
+
+def assert_item_read(i):
+    item: Dict[str, ndarray] = data_dict[i]
+    syr_item: Dict[str, ndarray] = syr.get_item(i)
+
+    for key, value in syr_item.items():
+        assert np.all(item[key] == value)
+
+
+def assert_array_read(i):
+    item: Dict[str, ndarray] = data_dict[i]
+
+    for key, value in item.items():
+        array = syr.get_array(i, key)
+        assert np.all(array == value)
+
+
+class TestSingleMethods(unittest.TestCase):
     def test_sequential_item_read(self):
-        self.fp_syr = File(self.syr_path, 'r')
-        item_idxs = range(self.num_items)
+        item_idxs = range(num_items)
 
         for i in item_idxs:
-            self.assert_item_read(i)
+            assert_item_read(i)
 
     def test_sequential_array_read(self):
-        self.fp_syr = File(self.syr_path, 'r')
-        item_idxs = range(self.num_items)
+        item_idxs = range(num_items)
 
         for i in item_idxs:
-            self.assert_array_read(i)
+            assert_array_read(i)
 
     def test_random_item_read(self):
-        self.fp_syr = File(self.syr_path, 'r')
-        item_idxs = np.random.permutation(self.num_items)
+        item_idxs = np.random.permutation(num_items)
 
         for i in item_idxs:
-            self.assert_item_read(i)
+            assert_item_read(i)
 
     def test_random_array_read(self):
-        self.fp_syr = File(self.syr_path, 'r')
-        item_idxs = np.random.permutation(self.num_items)
+        item_idxs = np.random.permutation(num_items)
         for i in item_idxs:
-            self.assert_array_read(i)
+            assert_array_read(i)
 
 
-class TestMultiMethods(SyrFileTestEnvironment, unittest.TestCase):
+class TestMultiMethods(unittest.TestCase):
     def test_sequential_item_read(self):
-        self.fp_syr = File()
-        item_idxs = range(self.num_items)
+        item_idxs = range(num_items)
 
-        p = Pool(self.num_workers, initializer=self.fp_syr.open, initargs=(self.syr_path, 'r'))
-        p.map(self.assert_item_read, item_idxs)
+        p = Pool(num_workers, initializer=syr.open, initargs=(syr_path, 'r'))
+        p.map(assert_item_read, item_idxs)
 
-    # def test_sequential_array_read(self):
-    #     self.fp_syr = File()
-    #     item_idxs = range(self.num_items)
-    #
-    #     p = Pool(self.num_workers, initializer=self.fp_syr.open, initargs=(self.syr_path, 'r'))
-    #     p.map(self.assert_array_read, item_idxs)
-    #
-    # def test_random_item_read(self):
-    #     self.fp_syr = File()
-    #     item_idxs = np.random.permutation(self.num_items)
-    #
-    #     p = Pool(self.num_workers, initializer=self.fp_syr.open, initargs=(self.syr_path, 'r'))
-    #     p.map(self.assert_item_read, item_idxs)
-    #
-    # def test_random_array_read(self):
-    #     self.fp_syr = File()
-    #     item_idxs = np.random.permutation(self.num_items)
-    #
-    #     p = Pool(self.num_workers, initializer=self.fp_syr.open, initargs=(self.syr_path, 'r'))
-    #     p.map(self.assert_array_read, item_idxs)
+    def test_sequential_array_read(self):
+        item_idxs = range(num_items)
+
+        p = Pool(num_workers, initializer=syr.open, initargs=(syr_path, 'r'))
+        p.map(assert_array_read, item_idxs)
+
+    def test_random_item_read(self):
+        item_idxs = np.random.permutation(num_items)
+
+        p = Pool(num_workers, initializer=syr.open, initargs=(syr_path, 'r'))
+        p.map(assert_item_read, item_idxs)
+
+    def test_random_array_read(self):
+        item_idxs = np.random.permutation(num_items)
+
+        p = Pool(num_workers, initializer=syr.open, initargs=(syr_path, 'r'))
+        p.map(assert_array_read, item_idxs)
 
 
 if __name__ == '__main__':
-    test = TestSingleMethods()
-    test.setUp()
-    test.test_sequential_item_read()
-
-    test = TestMultiMethods()
-    test.setUp()
-    test.test_sequential_item_read()
-
-    # unittest.main()
+    unittest.main()

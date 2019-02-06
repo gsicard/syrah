@@ -10,7 +10,7 @@ setup(
     description='Simple random access dataset format',
     install_requires=[
         'bson>=0.5.7',
-        'pytorch>=1.0.0',
+        'torch>=1.0.0',
         'numpy>=1.12.0'
     ]
 )

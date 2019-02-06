@@ -85,7 +85,7 @@ class MetadataWriter(AbstractMetadata):
         """
         if self.length == 0:
             self.metadata = dict()
-            self.data = np.empty([len(item_metadata.keys()) * len(metadata_types.keys()), 0], dtype=np.int64)
+            self.data = []
 
             for array_index, (array_key, array_metadata) in enumerate(item_metadata.items()):
                 if set(array_metadata.keys()) != set(metadata_types.keys()):
@@ -95,7 +95,8 @@ class MetadataWriter(AbstractMetadata):
                 self.metadata[array_key] = dict()
                 for metadata_index, metadata_key in enumerate(metadata_types.keys()):
                     if isinstance(metadata_types[metadata_key], list):
-                        self.metadata[array_key][metadata_key] = array_index * len(metadata_types.keys()) + metadata_index
+                        self.metadata[array_key][metadata_key] = len(self.data)
+                        self.data.append([])
                     else:
                         self.metadata[array_key][metadata_key] = array_metadata[metadata_key]
 
@@ -111,9 +112,10 @@ class MetadataWriter(AbstractMetadata):
 
             for metadata_index, metadata_key in enumerate(metadata_types.keys()):
                 if isinstance(metadata_types[metadata_key], list):
-                    item_data[self.metadata[array_key][metadata_key]] = array_metadata[metadata_key]
-
-        self.data = np.concatenate((self.data, item_data), axis=1)
+                    self.data[self.metadata[array_key][metadata_key]].append(array_metadata[metadata_key])
+                else:
+                    if array_metadata[metadata_key] != self.metadata[array_key][metadata_key]:
+                        raise ValueError(f'{metadata_key} value {array_metadata[metadata_key]} not consistent with previous values {self.metadata[array_key][metadata_key]}')
 
         self.length += 1
 
@@ -127,7 +129,7 @@ class MetadataWriter(AbstractMetadata):
             metadata_serialized[array_key] = dict()
             for metadata_key in metadata_types.keys():
                 if isinstance(metadata_types[metadata_key], list):
-                    metadata_serialized[array_key][metadata_key] = self.data[self.metadata[array_key][metadata_key], :].tobytes()
+                    metadata_serialized[array_key][metadata_key] = np.array(self.data[self.metadata[array_key][metadata_key]], dtype=metadata_types[metadata_key][0]).tobytes()
                 else:
                     metadata_serialized[array_key][metadata_key] = self.metadata[array_key][metadata_key]
 
