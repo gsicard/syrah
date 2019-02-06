@@ -16,11 +16,8 @@
     You should have received a copy of the GNU General Public License
     along with Syrah.  If not, see <https://www.gnu.org/licenses/>.
 """
-from typing import Any, Dict, Optional, Type, AnyStr
+from typing import Dict, Optional, Type
 from types import TracebackType
-from numpy import ndarray
-
-import numpy as np
 
 from .metadata import AbstractMetadata, MetadataReader, MetadataWriter
 from .serialization import *
@@ -68,25 +65,31 @@ class File:
 
     def _init_data(self):
         """
-        Initialize metadata anf file headers.
+        Initialize metadata and file headers.
         :return:
         """
         if self._mode == 'w':
-            self._version = version.version
-            self._metadata_offset = 0
-            self._metadata_length = 0
-            self._write_headers()
-
-            self._metadata = MetadataWriter()
-            self._item_offset = config.NUM_BYTES_VERSION + config.NUM_BYTES_METADATA_LENGTH + \
-                config.NUM_BYTES_METADATA_LENGTH + config.NUM_BYTES_MAGIC_BYTES
+            self._init_data_write()
         elif self._mode == 'r':
-            self._read_headers()
-
-            self._fp.seek(self._metadata_offset)
-            self._metadata = MetadataReader(self._fp.read(self._metadata_length))
+            self._init_data_read()
         else:
             raise ValueError(f'Expected File opening mode to be "r" or "w", got {self._mode}.')
+
+    def _init_data_write(self):
+        self._version = version.version
+        self._metadata_offset = 0
+        self._metadata_length = 0
+        self._write_headers()
+
+        self._metadata = MetadataWriter()
+        self._item_offset = config.NUM_BYTES_VERSION + config.NUM_BYTES_METADATA_LENGTH + \
+            config.NUM_BYTES_METADATA_LENGTH + config.NUM_BYTES_MAGIC_BYTES
+
+    def _init_data_read(self):
+        self._read_headers()
+
+        self._fp.seek(self._metadata_offset)
+        self._metadata = MetadataReader(self._fp.read(self._metadata_length))
 
     def __enter__(self):
         """
@@ -138,7 +141,7 @@ class File:
 
         data: Dict[str, ndarray] = dict()
 
-        for key, array_metadata in self._metadata.array_keys:
+        for key, array_metadata in self._metadata.metadata.items():
             self._fp.seek(self._metadata.get(item, key, 'offset'))
             array_serialized: AnyStr = self._fp.read(self._metadata.get(item, key, 'size'))
             data[key]: ndarray = deserialize_array(array_serialized, self._metadata.get(item, key, 'dtype'))
