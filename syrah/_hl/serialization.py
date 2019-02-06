@@ -50,7 +50,7 @@ Supported types by name
 dtype_names = {value: key for key, value in dtypes.items()}
 
 
-def format_dtype(data_type: dtype) -> str:
+def dtype_to_string(data_type: dtype) -> str:
     """
     Converts a numpy array type in one of the supported types in string format,
      raises an exception if it is not possible.
@@ -67,7 +67,7 @@ def format_dtype(data_type: dtype) -> str:
 
 def deserialize_array(array_serialized: AnyStr, data_type: str) -> ndarray:
     """
-    Deserialize an array using the given type.
+    Deserialize an array using the given type from a little endian encoded byte string.
     :param array_serialized: serialized array as byte string
     :param data_type: type of the resulting array
     :return: numpy array of the specified type
@@ -86,11 +86,11 @@ def deserialize_array(array_serialized: AnyStr, data_type: str) -> ndarray:
 
 def serialize_array(array: ndarray) -> Tuple[AnyStr, str]:
     """
-    Serialize a numpy array to byte string
+    Serialize a numpy array to a little endian encoded byte string.
     :param array: numpy array
     :return: serialized array and corresponding array type
     """
-    data_type = format_dtype(array.dtype)
+    data_type = dtype_to_string(array.dtype)
 
     if data_type == 'str':
         array_serialized = bytes(''.join(array), encoding='utf-8')
