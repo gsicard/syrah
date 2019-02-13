@@ -16,10 +16,10 @@
     You should have received a copy of the GNU General Public License
     along with Syrah.  If not, see <https://www.gnu.org/licenses/>.
 """
-from typing import Dict, Optional, Type
+from typing import Union, Dict, Optional, Type
 from types import TracebackType
 
-from .metadata import AbstractMetadata, MetadataReader, MetadataWriter
+from .metadata import MetadataReader, MetadataWriter
 from .serialization import *
 from .. import version
 from .. import config
@@ -41,7 +41,7 @@ class File:
         self._version = None
         self._metadata_offset = None
         self._metadata_length = None
-        self._metadata: Optional[AbstractMetadata] = None
+        self._metadata: Optional[Union[MetadataReader, MetadataWriter]] = None
         self._item_offset = None
 
         self.open(file_path, mode)
@@ -141,15 +141,17 @@ class File:
         for key, array_metadata in self._metadata.metadata.items():
             self._fp.seek(self._metadata.get(index, key, 'offset'))
             array_serialized: AnyStr = self._fp.read(self._metadata.get(index, key, 'size'))
+
             data[key]: ndarray = deserialize_array(array_serialized, self._metadata.get(index, key, 'dtype'))
 
         return data
 
-    def get_array(self, index: int, array_name: str) -> ndarray:
+    def get_array(self, index: int, array_name: str, dtype: Optional[str] = None) -> ndarray:
         """
         Get an array from the dataset.
         :param index: index of the item in the dataset
         :param array_name: name of the array to retrieve
+        :param dtype: type of the array to decode (if specified, overrides the value contained in the metadata)
         :return: an array
         """
         if self._fp is None:
@@ -165,8 +167,9 @@ class File:
 
         self._fp.seek(self._metadata.get(index, array_name, 'offset'))
         array_serialized = self._fp.read(self._metadata.get(index, array_name, 'size'))
+        dtype = dtype or self._metadata.get(index, array_name, 'dtype')
 
-        return deserialize_array(array_serialized, self._metadata.get(index, array_name, 'dtype'))
+        return deserialize_array(array_serialized, dtype)
 
     def num_items(self) -> int:
         """

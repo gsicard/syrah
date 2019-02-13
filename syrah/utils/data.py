@@ -47,7 +47,7 @@ class SyrahDataset(Dataset):
         self.syr.open(self.file_path, 'r')
         self.len = self.syr.num_items()
 
-    def __getitem__(self, item: int) -> Tuple[ndarray]:
+    def __getitem__(self, item: int) -> Tuple[ndarray, ...]:
         """
         Access the item at the  specified index
         :param item: index of the item

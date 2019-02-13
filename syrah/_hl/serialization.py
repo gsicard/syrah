@@ -72,8 +72,9 @@ def deserialize_array(array_serialized: AnyStr, data_type: str) -> ndarray:
     :param data_type: type of the resulting array
     :return: numpy array of the specified type
     """
-    if data_type not in dtype_names:
-        raise TypeError(f'Type {data_type} is not supported. Supported types are: {", ".join(dtype_names.keys())}')
+    # Commented for backward compatibility reasons:
+    # if data_type not in dtype_names:
+    #     raise TypeError(f'Type {data_type} is not supported. Supported types are: {", ".join(dtype_names.keys())}')
 
     if data_type == 'str':
         string = array_serialized.decode('utf-8')
