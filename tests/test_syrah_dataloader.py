@@ -80,7 +80,7 @@ class TestSingleDataset(unittest.TestCase):
     def test_sequential_item_read(self):
         syr_dataset = SyrahDataset(BASE_PATH + '_0' + '.syr', keys=['idx', 'label', 'fixed_len_array', 'var_len_array'])
         syr_dataloader = DataLoader(syr_dataset, shuffle=False, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS,
-                                    worker_init_fn=syr_dataset.open)
+                                    worker_init_fn=syr_dataset.worker_init_fn)
 
         for idx, label, fixed_len_array, var_len_array in syr_dataloader:
             pickled_item = data_dict[str(idx[0].numpy()[0])]
@@ -95,7 +95,7 @@ class TestConcatDataset(unittest.TestCase):
         syr_dataset_1 = SyrahDataset(BASE_PATH + '_1' + '.syr', keys=['idx', 'label', 'fixed_len_array', 'var_len_array'])
         syr_dataset = SyrahConcatDataset([syr_dataset_0, syr_dataset_1])
         syr_dataloader = DataLoader(syr_dataset, shuffle=False, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS,
-                                    worker_init_fn=syr_dataset.open)
+                                    worker_init_fn=syr_dataset.worker_init_fn)
 
         for idx, label, fixed_len_array, var_len_array in syr_dataloader:
             pickled_item = data_dict[str(idx[0].numpy()[0])]

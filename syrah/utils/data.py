@@ -16,7 +16,7 @@
     You should have received a copy of the GNU General Public License
     along with Syrah.  If not, see <https://www.gnu.org/licenses/>.
 """
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Callable, Optional
 from torch.utils.data.dataset import Dataset, ConcatDataset
 from numpy import ndarray
 from .. import File
@@ -26,7 +26,7 @@ class SyrahDataset(Dataset):
     """
     Represent a PyTorch Dataset using a Syrah file to store the data.
     """
-    def __init__(self, file_path: str, keys: List[str]):
+    def __init__(self, file_path: str, keys: List[str], process_funcs: Optional[Dict[str, Callable]] = None):
         """
         Create a new `Dataset` object.
         :param file_path: path to the Syrah file
@@ -34,6 +34,7 @@ class SyrahDataset(Dataset):
         """
         self.file_path = file_path
         self.keys = keys
+        self.process_funcs = process_funcs or dict()
 
         self.syr = File(file_path, 'r')
         self.len = self.syr.num_items()
@@ -53,7 +54,13 @@ class SyrahDataset(Dataset):
         :param item: index of the item
         :return: tuple of arrays
         """
-        return tuple([self.syr.get_array(item, key) for key in self.keys])
+
+        processed_arrays = [
+            self.process_funcs[key](self.syr.get_array(item, key)) if key in self.process_funcs else self.syr.get_array(item, key)
+            for key in self.keys
+        ]
+
+        return tuple(processed_arrays)
 
     def __len__(self) -> int:
         """
