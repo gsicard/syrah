@@ -16,10 +16,10 @@
     You should have received a copy of the GNU General Public License
     along with Syrah.  If not, see <https://www.gnu.org/licenses/>.
 """
-from typing import Dict, Optional, Type
+from typing import Union, Dict, Optional, Type
 from types import TracebackType
 
-from .metadata import AbstractMetadata, MetadataReader, MetadataWriter
+from .metadata import MetadataReader, MetadataWriter
 from .serialization import *
 from .. import version
 from .. import config
@@ -41,7 +41,7 @@ class File:
         self._version = None
         self._metadata_offset = None
         self._metadata_length = None
-        self._metadata: Optional[AbstractMetadata] = None
+        self._metadata: Optional[Union[MetadataReader, MetadataWriter]] = None
         self._item_offset = None
 
         self.open(file_path, mode)
@@ -77,9 +77,6 @@ class File:
 
     def _init_data_write(self):
         self._version = version.version
-        self._metadata_offset = 0
-        self._metadata_length = 0
-        self._write_headers()
 
         self._metadata = MetadataWriter()
         self._item_offset = config.NUM_BYTES_VERSION + config.NUM_BYTES_METADATA_LENGTH + \
@@ -124,11 +121,11 @@ class File:
 
         self._fp.close()
 
-    def get_item(self, item: int) -> Dict[str, ndarray]:
+    def get_item(self, index: int) -> Dict[str, ndarray]:
         """
         Get an item from the dataset.
-        :param item: index of the item in the dataset
-        :return: a dictionary of arrays
+        :param index: index of the item in the dataset
+        :return: a dictionary of (array name, array data) pairs
         """
         if self._fp is None:
             raise IOError('Trying to read an item from a non initialized file.')
@@ -136,23 +133,25 @@ class File:
             raise IOError('Trying to read item from a closed file.')
         if self._mode != 'r':
             raise IOError(f'File is expected to be opened in read mode, got {self._mode}.')
-        if item >= len(self._metadata):
-            raise IndexError(f'Item {item} out of range.')
+        if index >= len(self._metadata):
+            raise IndexError(f'Item {index} out of range.')
 
         data: Dict[str, ndarray] = dict()
 
         for key, array_metadata in self._metadata.metadata.items():
-            self._fp.seek(self._metadata.get(item, key, 'offset'))
-            array_serialized: AnyStr = self._fp.read(self._metadata.get(item, key, 'size'))
-            data[key]: ndarray = deserialize_array(array_serialized, self._metadata.get(item, key, 'dtype'))
+            self._fp.seek(self._metadata.get(index, key, 'offset'))
+            array_serialized: AnyStr = self._fp.read(self._metadata.get(index, key, 'size'))
+
+            data[key]: ndarray = deserialize_array(array_serialized, self._metadata.get(index, key, 'dtype'))
 
         return data
 
-    def get_array(self, item: int, key: str) -> ndarray:
+    def get_array(self, index: int, array_name: str, dtype: Optional[str] = None) -> ndarray:
         """
         Get an array from the dataset.
-        :param item: index of the item in the dataset
-        :param key: key of the array to retrieve
+        :param index: index of the item in the dataset
+        :param array_name: name of the array to retrieve
+        :param dtype: type of the array to decode (if specified, overrides the value contained in the metadata)
         :return: an array
         """
         if self._fp is None:
@@ -161,15 +160,16 @@ class File:
             raise IOError('Trying to read array from a closed file.')
         if self._mode != 'r':
             raise IOError(f'File is expected to be opened in read mode, got {self._mode}.')
-        if item >= len(self._metadata):
-            raise IndexError(f'Item {item} out of range.')
-        if key not in self._metadata.metadata:
-            raise KeyError(f'Key {key} could not be found in metadata.')
+        if index >= len(self._metadata):
+            raise IndexError(f'Item {index} out of range.')
+        if array_name not in self._metadata.metadata:
+            raise KeyError(f'Key {array_name} could not be found in metadata.')
 
-        self._fp.seek(self._metadata.get(item, key, 'offset'))
-        array_serialized = self._fp.read(self._metadata.get(item, key, 'size'))
+        self._fp.seek(self._metadata.get(index, array_name, 'offset'))
+        array_serialized = self._fp.read(self._metadata.get(index, array_name, 'size'))
+        dtype = dtype or self._metadata.get(index, array_name, 'dtype')
 
-        return deserialize_array(array_serialized, self._metadata.get(item, key, 'dtype'))
+        return deserialize_array(array_serialized, dtype)
 
     def num_items(self) -> int:
         """
@@ -222,11 +222,10 @@ class File:
         self._fp.write(header_metadata_offset)
         self._fp.write(header_metadata_length)
 
-    def add_item(self, data: Dict[str, ndarray]):
+    def add_item(self, item: Dict[str, ndarray]):
         """
         Write an item with the given index to the dataset.
-        :param item: index of the item
-        :param data: dictionary of arrays
+        :param item: dictionary of (array name, array data) pairs
         :return:
         """
         if self._fp is None:
@@ -239,9 +238,9 @@ class File:
         item_offset = self._item_offset
         metadata_item = dict()
 
-        for array_key, array_value in data.items():
-            if type(array_key) is not str:
-                raise ValueError(f'Expected array_key type to be str, got {type(array_key)}.')
+        for array_name, array_value in item.items():
+            if type(array_name) is not str:
+                raise ValueError(f'Expected array_name type to be str, got {type(array_name)}.')
             if type(array_value) is not ndarray:
                 raise ValueError(f'Expected value type to be ndarray, got {type(array_value)}.')
 
@@ -255,7 +254,7 @@ class File:
             array_metadata['size'] = len(array_serialized)
             array_metadata['dtype'] = dtype
 
-            metadata_item[array_key] = array_metadata
+            metadata_item[array_name] = array_metadata
             item_offset += len(array_serialized)
 
         self._metadata.add_item(metadata_item)
@@ -264,7 +263,7 @@ class File:
     @staticmethod
     def _version_to_string(version_bytes: bytes) -> str:
         """
-        Deserialize version number from bytes to string format.
+        Deserialize version number from little endian encoded bytes to string format.
         :param version_bytes: 4-byte array representation of the version number
         :return: string version with format "x.y.z"
         """
@@ -273,7 +272,7 @@ class File:
     @staticmethod
     def _version_to_bytes(version_string: str) -> bytes:
         """
-        Serialize version number from string format.
+        Serialize version number from string format to little endian encoded bytes.
         :param version_string: string version number of format "x.y.z"
         :return: 4-byte array representation of the version number
         """

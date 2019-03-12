@@ -59,7 +59,7 @@ Similarly to writing, the whole sample can be read at once and returns a diction
 
 ```python
 with File(file_path, mode='r') as syr:
-    for i in range(num_samples):
+    for i in range(syr.num_items()):
         # item is a dictionary with keys 'label' and 'features'
         item = syr.get_item(i)
 ```
@@ -157,6 +157,6 @@ The file format is as follows:
     - 8 bytes for the serialized metadata offset (int64)
     - 8 bytes for the serialized metadata length (int64)
 - data (arbitrary size):
-    - concatenation of byte representations of all arrays in the dataset
+    - concatenation of byte representations of all arrays in the dataset using little endian encoding
 - metadata (arbitrary size):
     - serialized metadata using bson
