@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(
-    name='syrah',
+    name='pysyrah',
     version='0.1.2',
     packages=['syrah', 'syrah._hl', 'syrah.utils'],
     url='https://github.com/gsicard/syrah',
