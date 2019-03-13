@@ -16,7 +16,7 @@
     You should have received a copy of the GNU General Public License
     along with Syrah.  If not, see <https://www.gnu.org/licenses/>.
 """
-from typing import Union, Dict, AnyStr, Optional, Any
+from typing import Union, Dict, AnyStr, Optional, Any, Tuple
 from numpy import ndarray
 
 import numpy as np
@@ -44,25 +44,37 @@ metadata_ctypes = {
 
 
 class MpNdArray:
+    """
+    Container for a multiprocessing multi-dimensional array.
+    """
     def __init__(self, array: ndarray):
+        """
+        Create a new multiprocessing multi-dimensional array.
+        :param array: array to wrap with multiprocessing container
+        """
         self.shape = array.shape
         self.dtype = array.dtype
         self.data = mp.RawArray(self.dtype.char, array.ravel())
 
-    def __getitem__(self, item):
-        return self.data[np.ravel_multi_index(item, dims=self.shape)]
+    def __getitem__(self, index: Tuple[int, ...]) -> Any:
+        """
+        Get item from array at the given index
+        :param index: index of the item
+        :return:
+        """
+        return self.data[np.ravel_multi_index(index, dims=self.shape)]
 
 
-class AbstractMetadata:
+class MetadataWriter:
     """
-        Represent a metadata object.
+    Represents a metadata writer object.
     """
     def __init__(self):
         """
-        Create a new metadata object
+        Create a new metadata writer object.
         """
         self.metadata: Optional[Dict[AnyStr, Dict[AnyStr, Any]]] = None
-        self.data: Optional[Union[ndarray, MpNdArray]] = None
+        self.data: Optional[ndarray] = None
         self.length: int = 0
 
     def __len__(self) -> int:
@@ -72,11 +84,6 @@ class AbstractMetadata:
         """
         return self.length
 
-
-class MetadataWriter(AbstractMetadata):
-    """
-    Represent a metadata writer object.
-    """
     def add_item(self, item_metadata: Dict[AnyStr, Dict[AnyStr, int]]):
         """
         Add a new item to the metadata.
@@ -136,16 +143,28 @@ class MetadataWriter(AbstractMetadata):
         return bson.dumps(metadata_serialized)
 
 
-class MetadataReader(AbstractMetadata):
+class MetadataReader:
+    """
+    Represents a metadata reader object.
+    """
     def __init__(self, serialized: Optional[AnyStr] = None):
         """
         Create a new metadata reader object and initialize it if necessary.
         :param serialized: serialized metadata for initialization
         """
-        super().__init__()
+        self.metadata: Optional[Dict[AnyStr, Dict[AnyStr, Any]]] = None
+        self.data: Optional[MpNdArray] = None
+        self.length: int = 0
 
         if serialized is not None:
             self.frombuffer(serialized)
+
+    def __len__(self) -> int:
+        """
+        Return the length of the metadata.
+        :return: length of the metadata
+        """
+        return self.length
 
     def frombuffer(self, serialized: AnyStr):
         """

@@ -68,13 +68,14 @@ def dtype_to_string(data_type: dtype) -> str:
 def deserialize_array(array_serialized: AnyStr, data_type: str) -> ndarray:
     """
     Deserialize an array using the given type from a little endian encoded byte string.
+    If the specified type is a string it is assumed that the array contains only one element
+    (i.e. decoded as a char array).
     :param array_serialized: serialized array as byte string
     :param data_type: type of the resulting array
     :return: numpy array of the specified type
     """
-    # Commented for backward compatibility reasons:
-    # if data_type not in dtype_names:
-    #     raise TypeError(f'Type {data_type} is not supported. Supported types are: {", ".join(dtype_names.keys())}')
+    if data_type not in dtype_names:
+        raise TypeError(f'Type {data_type} is not supported. Supported types are: {", ".join(dtype_names.keys())}')
 
     if data_type == 'str':
         string = array_serialized.decode('utf-8')

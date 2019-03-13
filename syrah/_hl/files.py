@@ -27,7 +27,7 @@ from .. import config
 
 class File:
     """
-        Represent a Syrah dataset file.
+        Represents a Syrah dataset file.
     """
     def __init__(self, file_path: str, mode: str):
         """
@@ -224,6 +224,22 @@ class File:
         self._fp.write(header_metadata_offset)
         self._fp.write(header_metadata_length)
 
+    @staticmethod
+    def create_array_metadata(offset: int, size: int, dtype: str):
+        """
+        Create metadata dictionary
+        :param offset: array offset in the file
+        :param size: size of the serialized array
+        :param dtype: type of the array data
+        :return:
+        """
+        array_metadata = dict()
+        array_metadata['offset'] = offset
+        array_metadata['size'] = size
+        array_metadata['dtype'] = dtype
+
+        return array_metadata
+
     def add_item(self, item: Dict[str, ndarray]):
         """
         Write an item with the given index to the dataset.
@@ -246,10 +262,7 @@ class File:
             self._fp.seek(item_offset)
             self._fp.write(array_serialized)
 
-            array_metadata = dict()
-            array_metadata['offset'] = item_offset
-            array_metadata['size'] = len(array_serialized)
-            array_metadata['dtype'] = dtype
+            array_metadata = self.create_array_metadata(item_offset, len(array_serialized), dtype)
 
             metadata_item[array_name] = array_metadata
             item_offset += len(array_serialized)

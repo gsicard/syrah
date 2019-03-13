@@ -24,7 +24,7 @@ from .. import File
 
 class SyrahDataset(Dataset):
     """
-    Represent a PyTorch Dataset using a Syrah file to store the data.
+    Represents a PyTorch Dataset using a Syrah file to store the data.
     """
     def __init__(self, file_path: str, keys: List[str], process_funcs: Optional[Dict[str, Callable]] = None):
         """
@@ -72,7 +72,7 @@ class SyrahDataset(Dataset):
 
 class SyrahConcatDataset(ConcatDataset):
     """
-    Represent a concatenation of syrah datasets.
+    Represents a concatenation of syrah datasets.
     """
     def __init__(self, datasets: List[SyrahDataset]):
         """
