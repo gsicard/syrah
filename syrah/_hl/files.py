@@ -121,18 +121,29 @@ class File:
 
         self._fp.close()
 
+    def validate_file_handle(self, mode):
+        if mode == 'r':
+            message = 'Trying to read an item from'
+        elif mode == 'w':
+            message = 'Trying to write an item to'
+        else:
+            raise ValueError(f'Unknown mode "{mode}"')
+
+        if self._fp is None:
+            raise IOError(f'{message} a non initialized file.')
+        if self._fp.closed:
+            raise IOError(f'{message} a closed file.')
+        if self._mode != mode:
+            raise IOError(f'File is expected to be opened in "{mode}" mode, got "{self._mode}".')
+
     def get_item(self, index: int) -> Dict[str, ndarray]:
         """
         Get an item from the dataset.
         :param index: index of the item in the dataset
         :return: a dictionary of (array name, array data) pairs
         """
-        if self._fp is None:
-            raise IOError('Trying to read an item from a non initialized file.')
-        if self._fp.closed:
-            raise IOError('Trying to read item from a closed file.')
-        if self._mode != 'r':
-            raise IOError(f'File is expected to be opened in read mode, got {self._mode}.')
+        self.validate_file_handle('r')
+
         if index >= len(self._metadata):
             raise IndexError(f'Item {index} out of range.')
 
@@ -154,14 +165,11 @@ class File:
         :param dtype: type of the array to decode (if specified, overrides the value contained in the metadata)
         :return: an array
         """
-        if self._fp is None:
-            raise IOError('Trying to read an array from a non initialized file.')
-        if self._fp.closed:
-            raise IOError('Trying to read array from a closed file.')
-        if self._mode != 'r':
-            raise IOError(f'File is expected to be opened in read mode, got {self._mode}.')
+        self.validate_file_handle('r')
+
         if index >= len(self._metadata):
             raise IndexError(f'Item {index} out of range.')
+
         if array_name not in self._metadata.metadata:
             raise KeyError(f'Key {array_name} could not be found in metadata.')
 
@@ -183,10 +191,7 @@ class File:
         Read the headers and the metadata from file.
         :return:
         """
-        if self._fp.closed:
-            raise IOError('Trying to read headers from a closed file.')
-        if self._mode != 'r':
-            raise IOError(f'File is expected to be opened in read mode, got {self._mode}.')
+        self.validate_file_handle('r')
 
         self._fp.seek(0)
         header_magic_bytes = self._fp.read(config.NUM_BYTES_MAGIC_BYTES)
@@ -207,10 +212,7 @@ class File:
         Write headers to file.
         :return:
         """
-        if self._fp.closed:
-            raise IOError('Trying to write headers to a closed file.')
-        if self._mode != 'w':
-            raise IOError(f'File is expected to be opened in write mode, got {self._mode}.')
+        self.validate_file_handle('w')
 
         header_version: AnyStr = self._version_to_bytes(self._version)
         header_metadata_offset: AnyStr = np.array([self._metadata_offset], dtype=np.int64).tobytes()
@@ -228,12 +230,7 @@ class File:
         :param item: dictionary of (array name, array data) pairs
         :return:
         """
-        if self._fp is None:
-            raise IOError('Trying to write an item to a non initialized file.')
-        if self._fp.closed:
-            raise IOError('Trying to write an item to a closed file.')
-        if self._mode != 'w':
-            raise IOError(f'File is expected to be opened in write mode, got {self._mode}.')
+        self.validate_file_handle('w')
 
         item_offset = self._item_offset
         metadata_item = dict()
