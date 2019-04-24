@@ -52,6 +52,8 @@ with File(file_path, mode='w') as syr:
 ```
 
 **Important note:** if a syrah `File` is opened in writing mode outside a context manager (`with` statement) it needs to be closed explicitly using the `File.close()` method to ensure that the metadata is written at the end of the file and that the headers are properly updated.
+
+Note: if the data type is "str", the array is serialized as a byte array. 
  
 ## 3. Reading from a syrah file
 
@@ -73,6 +75,8 @@ with File(file_path, mode='r') as syr:
         features = syr.get_array(i, 'features')
 ```
 
+Note: if the data type is "str", the array is deserialized as a byte array and converted to an length-one array of a string fro compatibility reasons. 
+
 ## 4. PyTorch dataset API
 
 If the data does not need to be preprocessed before being fed to the network, a `SyrahDataset` object can be used with a PyTorch `Dataloader`:
@@ -91,7 +95,7 @@ for features, labels in data_generator:
 If data preprocessing is needed, the `__init__()` and `__getitem__()` methods should be overridden:
 ```python
 class CustomSyrahDataset(SyrahDataset):
-    def __init__(self, file_path: str, *args):
+    def __init__(cls, file_path: str, *args):
         """
         Create a new `Dataset` object.
         :param file_path: path to the Syrah file
@@ -100,7 +104,7 @@ class CustomSyrahDataset(SyrahDataset):
         super().__init__(file_path, ['features', 'label'])
         ...
 
-    def __getitem__(self, item: int) -> Tuple[ndarray, ndarray]:
+    def __getitem__(cls, item: int) -> Tuple[ndarray, ndarray]:
         """
         Access the item at the  specified index
         :param item: index of the item

@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='pysyrah',
-    version='0.1.2',
+    version='0.1.3',
     packages=['syrah', 'syrah._hl', 'syrah.utils'],
     url='https://github.com/gsicard/syrah',
     license='GNU General Public License v3 (GPLv3)',

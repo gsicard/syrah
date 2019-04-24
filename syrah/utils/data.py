@@ -41,7 +41,7 @@ class SyrahDataset(Dataset):
 
     def worker_init_fn(self, worker_id: int = -1):
         """
-        Open the dataset file.
+        Opens the dataset file.
         Needs to be set as "worker_init_fn" argument when using a Dataloader with num_workers > 1.
         :param worker_id: id of the PyTorch data loader worker calling the method
         """
@@ -76,7 +76,7 @@ class SyrahConcatDataset(ConcatDataset):
     """
     def __init__(self, datasets: List[SyrahDataset]):
         """
-        Concatenate several syrah datasets
+        Concatenates several syrah datasets
         :param datasets: list of syrah datasets
         """
         super().__init__(datasets)
