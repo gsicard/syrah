@@ -10,7 +10,7 @@ extras_require = {
 
 setup(
     name='pysyrah',
-    version='0.2.0-dev',
+    version='0.2.0',
     packages=['syrah', 'syrah._hl', 'syrah.utils'],
     url='https://github.com/gsicard/syrah',
     license='GNU General Public License v3 (GPLv3)',
