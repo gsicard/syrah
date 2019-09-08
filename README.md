@@ -151,10 +151,10 @@ p = Pool(num_workers, initializer=syr.open, initargs=(file_path, 'r'))
 p.map(read_item, range(num_samples))
 ```
 
-Similarly, when using `num_workers > 0` with PyTorch `Dataloader`, `SyrahDataset.open()` also needs to be called by each worker (or `SyrahConcatDataset.open()` in case of multiple syrah files):
+Similarly, when using `num_workers > 0` with PyTorch `Dataloader`, `SyrahDataset.worker_init_fn` also needs to be called by each worker (or `SyrahConcatDataset.worker_init_fn` in case of multiple syrah files):
 
 ```python
-data_generator_multi = DataLoader(dataset, batch_size=32, shuffle=True, num_workers=num_workers, worker_init_fn=dataset.open)
+data_generator_multi = DataLoader(dataset, batch_size=32, shuffle=True, num_workers=num_workers, worker_init_fn=dataset.worker_init_fn)
 
 for features, labels in data_generator_multi:
     ...
