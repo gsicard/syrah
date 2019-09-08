@@ -17,9 +17,13 @@
     along with Syrah.  If not, see <https://www.gnu.org/licenses/>.
 """
 from typing import List, Tuple, Dict, Callable, Optional
-from torch.utils.data.dataset import Dataset, ConcatDataset
 from numpy import ndarray
 from .. import File
+
+try:
+    from torch.utils.data.dataset import Dataset, ConcatDataset
+except ModuleNotFoundError:
+    raise ModuleNotFoundError('Module pytorch not found, required to use the syrah.data module.')
 
 
 class SyrahDataset(Dataset):
