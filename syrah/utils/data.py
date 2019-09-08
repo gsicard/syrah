@@ -17,9 +17,14 @@
     along with Syrah.  If not, see <https://www.gnu.org/licenses/>.
 """
 from typing import List, Tuple, Dict, Callable, Optional
-from torch.utils.data.dataset import Dataset, ConcatDataset
 from numpy import ndarray
 from .. import File
+
+try:
+    from torch.utils.data.dataset import Dataset, ConcatDataset
+except ModuleNotFoundError:
+    raise ModuleNotFoundError('Module torch not found, required to use the syrah.data module. Install pysyrah[all] '
+                              'or pysyrah[torch].')
 
 
 class SyrahDataset(Dataset):
@@ -31,6 +36,7 @@ class SyrahDataset(Dataset):
         Create a new `Dataset` object.
         :param file_path: path to the Syrah file
         :param keys: list of keys to retrieve from the data
+        :param process_funcs: dictionary of functions to apply to each retrieved array based on its key
         """
         self.file_path = file_path
         self.keys = keys
@@ -56,7 +62,8 @@ class SyrahDataset(Dataset):
         """
 
         processed_arrays = [
-            self.process_funcs[key](self.syr.get_array(item, key)) if key in self.process_funcs else self.syr.get_array(item, key)
+            self.process_funcs[key](self.syr.get_array(item, key))
+            if key in self.process_funcs else self.syr.get_array(item, key)
             for key in self.keys
         ]
 

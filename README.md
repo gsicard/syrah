@@ -19,11 +19,18 @@ This package contains the high level implementation to read and write syrah file
 
 ## 1. Installation
 
-
+For a default installation without PyTorch datasets (see [4.](#4-pytorch-dataset-api)):
+ 
 ```bash
 git clone https://github.com/gsicard/syrah.git
 cd syrah
 pip install --upgrade .
+```
+
+For a full installation including PyTorch datasets, replace the last line with:
+
+```bash
+pip install --upgrade .[all]
 ```
 
 ## 2. Writing to a syrah file
@@ -91,6 +98,7 @@ data_generator = DataLoader(dataset, batch_size=32, shuffle=True)
 for features, labels in data_generator:
     ...
 ```
+Note: requires installation with PyTorch datasets support (as detailed in [1.](#1-installation)).
 
 If data preprocessing is needed, the `__init__()` and `__getitem__()` methods should be overridden:
 ```python
