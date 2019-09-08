@@ -23,7 +23,7 @@ from .. import File
 try:
     from torch.utils.data.dataset import Dataset, ConcatDataset
 except ModuleNotFoundError:
-    raise ModuleNotFoundError('Module pytorch not found, required to use the syrah.data module. Install pysyrah[all] '
+    raise ModuleNotFoundError('Module torch not found, required to use the syrah.data module. Install pysyrah[all] '
                               'or pysyrah[torch].')
 
 
