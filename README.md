@@ -1,10 +1,12 @@
 **Important note:** this code is still in development, and while all documented features have been properly tested, it should still be used with caution.
+
 # Syrah
-Syrah (simple random access dataset format) allows for fast random access of on-disk arbitrary-type indexed arrays.
 
-It was designed as a backend for PyTorch dataset API since other options were deemed too slow or required to load the entire file in memory.
+Syrah (simple random access dataset format) allows for fast random access of on-disk indexed arrays of arbitrary types.
 
-Syrah works by loading the dataset metadata in memory (arrays type, position in file and length) and using it to rapidly access and deserialize arrays from the file on disk. 
+It was designed as a backend for PyTorch dataset API when the data does not fit in memory.
+
+Syrah works by loading only the dataset metadata in memory (arrays type, size and file offset) and using it to rapidly access and deserialize arrays from the file on disk.
 
 This package contains the high level implementation to read and write syrah files as well as wrappers for the PyTorch dataset API.
 
