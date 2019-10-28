@@ -173,8 +173,23 @@ class File:
         if array_name not in self._metadata.metadata:
             raise KeyError(f'Key {array_name} could not be found in metadata.')
 
-        self._fp.seek(self._metadata.get(index, array_name, 'offset'))
-        array_serialized = self._fp.read(self._metadata.get(index, array_name, 'size'))
+        array_start_offset = self._metadata.get(index, array_name, 'offset')
+        array_byte_size = self._metadata.get(index, array_name, 'size')
+
+        self._fp.seek(array_start_offset)
+        array_serialized = self._fp.read(array_byte_size)
+
+        array_end_offset = self._fp.tell()
+
+        if array_end_offset != array_start_offset + array_byte_size:
+            raise RuntimeError(f'The file pointer after reading the array is different from its expected value '
+                               f'({array_end_offset} != {array_start_offset + array_byte_size}). '
+                               f'This is most likely due to multiprocessing concurrency issues: '
+                               f'call the `File.open` method from each worker or the `worker_init_fn` method '
+                               f'if you are working with SyrahDataset or SyrahDataset objects. '
+                               f'For more information, read section 5. Multiprocessing concurrency issues '
+                               f'of the README.md file.')
+
         dtype = dtype or self._metadata.get(index, array_name, 'dtype')
 
         return deserialize_array(array_serialized, dtype)
