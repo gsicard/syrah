@@ -160,6 +160,8 @@ for features, labels in data_generator_multi:
     ...
 ```
 
+Note: if the above methods are not called before a syrah file or dataset is accessed by multiple processes an exception will be raised.
+
 ## 6. File format summary
 
 The file format is as follows:
