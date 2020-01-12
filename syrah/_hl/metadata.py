@@ -73,7 +73,7 @@ class MetadataWriter:
         """
         Create a new metadata writer object.
         """
-        self.metadata: Optional[Dict[AnyStr, Dict[AnyStr, Any]]] = None
+        self.metadata: Optional[Dict[AnyStr, Dict[AnyStr, Any]]] = None  # TODO: check for best practices: None or empty dict
         self.data: Optional[ndarray] = None
         self.length: int = 0
 
@@ -128,7 +128,8 @@ class MetadataWriter:
                     self.data[self.metadata[array_key][metadata_key]].append(array_metadata[metadata_key])
                 else:
                     if array_metadata[metadata_key] != self.metadata[array_key][metadata_key]:
-                        raise ValueError(f'{metadata_key} value {array_metadata[metadata_key]} not consistent with previous values {self.metadata[array_key][metadata_key]}')
+                        raise ValueError(f'{metadata_key} value {array_metadata[metadata_key]} not consistent '
+                                         f'with previous values {self.metadata[array_key][metadata_key]}')
 
     def tobytes(self) -> AnyStr:
         """
@@ -136,13 +137,17 @@ class MetadataWriter:
         :return: serialized metadata
         """
         metadata_serialized = dict()
-        for array_key in self.metadata.keys():
-            metadata_serialized[array_key] = dict()
-            for metadata_key in metadata_types.keys():
-                if isinstance(metadata_types[metadata_key], list):
-                    metadata_serialized[array_key][metadata_key] = np.array(self.data[self.metadata[array_key][metadata_key]], dtype=metadata_types[metadata_key][0]).tobytes()
-                else:
-                    metadata_serialized[array_key][metadata_key] = self.metadata[array_key][metadata_key]
+
+        if self.length > 0:
+            for array_key in self.metadata.keys():
+                metadata_serialized[array_key] = dict()
+                for metadata_key in metadata_types.keys():
+                    if isinstance(metadata_types[metadata_key], list):
+                        metadata_serialized[array_key][metadata_key] = np.array(
+                            self.data[self.metadata[array_key][metadata_key]],
+                            dtype=metadata_types[metadata_key][0]).tobytes()
+                    else:
+                        metadata_serialized[array_key][metadata_key] = self.metadata[array_key][metadata_key]
 
         return bson.dumps(metadata_serialized)
 
@@ -191,7 +196,7 @@ class MetadataReader:
                     self.metadata[array_key][metadata_key] = metadata_serialized[array_key][metadata_key]
 
         self.data = MpNdArray(np.array(arrays_list))
-        self.length = len(arrays_list[0])
+        self.length = len(arrays_list[0]) if len(arrays_list) > 0 else 0
 
     def get(self, item: int, array_key: AnyStr, metadata_key: AnyStr) -> Any:
         """
