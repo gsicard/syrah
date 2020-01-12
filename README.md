@@ -1,5 +1,3 @@
-**Important note:** this code is still in development, and while all documented features have been properly tested, it should still be used with caution.
-
 # Syrah
 
 Syrah (simple random access dataset format) allows for fast random access of on-disk indexed arrays of arbitrary types.
