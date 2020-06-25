@@ -1,4 +1,4 @@
-**Important note:** this code is still in development, and while all documented features have been properly tested, it should still be used with caution.
+**Important note:** this code is still in development, it should be used with caution.
 
 # Syrah
 
